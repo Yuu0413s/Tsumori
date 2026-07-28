@@ -4,8 +4,9 @@ import { createDb, schema } from "@tsumori/db";
 import { isLocalDev, type Bindings } from "./env.js";
 
 /**
- * env は Cloudflare Workers では c.env からリクエストごとに渡される
- * （process.env が使えないため）。DBコネクションも呼び出しごとに作る。
+ * env は Cloudflare Workers では c.env からリクエスト時に渡される
+ * （process.env が使えないため）。この関数自体はリクエストのたびに
+ * 呼ばれるわけではなく、isolate内で初回だけ呼ばれる（createAuthのキャッシュ参照）。
  */
 function buildAuth(env: Bindings) {
   const db = createDb(env.DATABASE_URL);
