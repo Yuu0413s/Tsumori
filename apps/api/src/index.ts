@@ -3,7 +3,7 @@ import { cors } from "hono/cors";
 import { formatDuration } from "@tsumori/core";
 import { createAuth } from "./auth.js";
 import { requireAuth, type AuthVariables } from "./middleware/require-auth.js";
-import type { Bindings } from "./env.js";
+import { isLocalDev, type Bindings } from "./env.js";
 
 export type { Bindings };
 
@@ -12,10 +12,14 @@ const app = new Hono<{ Bindings: Bindings; Variables: AuthVariables }>().basePat
 // 開発中はローカルの Vite dev サーバー（5173番ポート固定）からのアクセスのみ許可する。
 // 本番は同一オリジン（tsumori.yuu0413.com）なので CORS は不要になる。
 // better-auth がセッションを Cookie で扱うため credentials を付与する。
+// origin を関数にして isLocalDev(c.env) で判定するのは、wrangler.jsonc の
+// ENVIRONMENT が本番でも "development" のままで信頼できないため
+// （Codexレビュー対応：本番でlocalhostをCORS許可し続けてしまう問題の修正）。
 app.use(
   "*",
   cors({
-    origin: "http://localhost:5173",
+    origin: (origin, c) =>
+      isLocalDev(c.env) && origin === "http://localhost:5173" ? origin : null,
     credentials: true,
   }),
 );

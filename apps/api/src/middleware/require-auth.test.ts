@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, spyOn, test } from "bun:test";
 import { Hono } from "hono";
 import { requireAuth, type AuthVariables } from "./require-auth.js";
 
@@ -25,12 +25,15 @@ describe("requireAuth", () => {
     expect(body).toEqual({ userId: "user_1" });
   });
 
-  test("getSession が例外を投げても 401 を返す（不正なCookie等）", async () => {
+  test("getSession が例外を投げたとき 500 を返し、サーバー側にログを残す（DB障害等を401と混同しない）", async () => {
+    const consoleError = spyOn(console, "error").mockImplementation(() => {});
     const app = buildApp(async () => {
-      throw new Error("invalid session token");
+      throw new Error("connection lost");
     });
     const res = await app.request("/protected");
 
-    expect(res.status).toBe(401);
+    expect(res.status).toBe(500);
+    expect(consoleError).toHaveBeenCalled();
+    consoleError.mockRestore();
   });
 });
