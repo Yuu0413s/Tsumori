@@ -5,6 +5,7 @@ import {
   planMigration,
   filterUnmigrated,
   findOrphanedTimeEntryUserIds,
+  findEmailConflicts,
 } from "../src/migrate-legacy-auth.js";
 
 // Issue #7: Auth.js 旧テーブル（users/accounts）の実データを
@@ -29,7 +30,7 @@ async function main(databaseUrl: string) {
     await Promise.all([
       db.select().from(users),
       db.select().from(accounts).where(eq(accounts.provider, "google")),
-      db.select({ id: user.id }).from(user),
+      db.select({ id: user.id, email: user.email }).from(user),
       db
         .select({ accountId: account.accountId })
         .from(account)
@@ -43,15 +44,35 @@ async function main(databaseUrl: string) {
     googleAccountIds: new Set(existingGoogleAccounts.map((a) => a.accountId)),
   });
 
+  const emailConflicts = findEmailConflicts(toInsert.users, existingUsers);
+  if (emailConflicts.length > 0) {
+    console.error(
+      `email が既存の別 user と衝突しています（${emailConflicts.length}件）。書き込みを中止します。`,
+    );
+    for (const c of emailConflicts) {
+      console.error(
+        `  email=${c.email}: legacy users.id=${c.legacyId} / 既存 user.id=${c.existingUserId}`,
+      );
+    }
+    process.exitCode = 1;
+    return;
+  }
+
   console.log(
     `[dry-run=${!shouldExecute}] user 挿入予定: ${toInsert.users.length}件 / account 挿入予定: ${toInsert.accounts.length}件`,
   );
 
   if (shouldExecute) {
-    if (toInsert.users.length > 0) {
+    // user と account を1つのバッチにまとめ、片方だけ書き込まれた状態を防ぐ
+    // （neon-http ドライバは db.transaction() 非対応のため、Neonの原子的バッチAPIを使う）。
+    if (toInsert.users.length > 0 && toInsert.accounts.length > 0) {
+      await db.batch([
+        db.insert(user).values(toInsert.users),
+        db.insert(account).values(toInsert.accounts),
+      ]);
+    } else if (toInsert.users.length > 0) {
       await db.insert(user).values(toInsert.users);
-    }
-    if (toInsert.accounts.length > 0) {
+    } else if (toInsert.accounts.length > 0) {
       await db.insert(account).values(toInsert.accounts);
     }
     console.log(

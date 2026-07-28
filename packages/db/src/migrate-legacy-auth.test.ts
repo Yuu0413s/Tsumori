@@ -8,6 +8,7 @@ import {
   planMigration,
   filterUnmigrated,
   findOrphanedTimeEntryUserIds,
+  findEmailConflicts,
 } from "./migrate-legacy-auth.js";
 
 const NOW = new Date("2026-07-29T00:00:00.000Z");
@@ -201,6 +202,49 @@ describe("findOrphanedTimeEntryUserIds", () => {
 
   test("time_entries が空でも孤立は0件", () => {
     const result = findOrphanedTimeEntryUserIds([], new Set(["user_1"]));
+    expect(result).toEqual([]);
+  });
+});
+
+describe("findEmailConflicts", () => {
+  test("同じ email で別 id の既存 user がある場合は衝突として検出する", () => {
+    const plan = planMigration([legacyUser({ id: "user_1", email: "taro@example.com" })], [], {
+      now: NOW,
+    });
+
+    const result = findEmailConflicts(plan.users, [
+      { id: "already-existing-id", email: "taro@example.com" },
+    ]);
+
+    expect(result).toEqual([
+      { legacyId: "user_1", email: "taro@example.com", existingUserId: "already-existing-id" },
+    ]);
+  });
+
+  test("同じ id・同じ email の既存 user は衝突ではない（再実行時に自分自身と一致するだけ）", () => {
+    const plan = planMigration([legacyUser({ id: "user_1", email: "taro@example.com" })], [], {
+      now: NOW,
+    });
+
+    const result = findEmailConflicts(plan.users, [{ id: "user_1", email: "taro@example.com" }]);
+
+    expect(result).toEqual([]);
+  });
+
+  test("既存 user が空でも衝突は0件", () => {
+    const plan = planMigration([legacyUser({ id: "user_1" })], [], { now: NOW });
+    expect(findEmailConflicts(plan.users, [])).toEqual([]);
+  });
+
+  test("email が一致しなければ衝突ではない", () => {
+    const plan = planMigration([legacyUser({ id: "user_1", email: "taro@example.com" })], [], {
+      now: NOW,
+    });
+
+    const result = findEmailConflicts(plan.users, [
+      { id: "other-id", email: "hanako@example.com" },
+    ]);
+
     expect(result).toEqual([]);
   });
 });

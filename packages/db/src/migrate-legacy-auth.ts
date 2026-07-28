@@ -107,3 +107,33 @@ export function findOrphanedTimeEntryUserIds(
   const orphaned = new Set(timeEntryUserIds.filter((id) => !migratedUserIds.has(id)));
   return [...orphaned];
 }
+
+export interface ExistingAuthUser {
+  id: string;
+  email: string;
+}
+
+export interface EmailConflict {
+  legacyId: string;
+  email: string;
+  existingUserId: string;
+}
+
+/**
+ * `user.email` には unique 制約があるため、移行対象の email が
+ * 既存の別 id の user と衝突していないかを insert 前に検証する
+ * （Codexレビュー対応：insert失敗で初めて気づくと原因が分かりにくいため）。
+ */
+export function findEmailConflicts(
+  usersToInsert: NewAuthUser[],
+  existingUsers: ExistingAuthUser[],
+): EmailConflict[] {
+  const existingIdByEmail = new Map(existingUsers.map((u) => [u.email, u.id]));
+
+  return usersToInsert.flatMap((u) => {
+    const existingUserId = existingIdByEmail.get(u.email);
+    return existingUserId !== undefined && existingUserId !== u.id
+      ? [{ legacyId: u.id, email: u.email, existingUserId }]
+      : [];
+  });
+}
