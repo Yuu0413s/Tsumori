@@ -17,7 +17,10 @@ type GetSession<E extends { Variables: AuthVariables }> = (
  */
 export function requireAuth<E extends { Variables: AuthVariables }>(getSession: GetSession<E>) {
   return createMiddleware<E>(async (c, next) => {
-    const session = await getSession(c).catch(() => null);
+    const session = await getSession(c).catch((error: unknown) => {
+      console.error("requireAuth: getSession failed", error);
+      return null;
+    });
 
     if (!session) {
       return c.json({ error: "Unauthorized" }, 401);
