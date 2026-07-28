@@ -2,6 +2,8 @@ import { describe, expect, test } from "bun:test";
 import { calcDeadline, shouldFireAlarm, type AlarmEntry } from "./alarm.js";
 
 const startedAt = new Date("2026-07-28T10:00:00.000Z");
+// 休憩中でないケースでは now は結果に影響しないが、必須引数なので適当な値を渡す
+const arbitraryNow = new Date("2026-07-28T10:20:00.000Z");
 
 function baseEntry(overrides: Partial<AlarmEntry> = {}): AlarmEntry {
   return {
@@ -17,22 +19,22 @@ function baseEntry(overrides: Partial<AlarmEntry> = {}): AlarmEntry {
 describe("calcDeadline", () => {
   test("休憩なし × 延ばす: 開始 + 計画時間", () => {
     const entry = baseEntry({ breakExtendsDeadline: true });
-    expect(calcDeadline(entry)).toEqual(new Date("2026-07-28T10:30:00.000Z"));
+    expect(calcDeadline(entry, arbitraryNow)).toEqual(new Date("2026-07-28T10:30:00.000Z"));
   });
 
   test("休憩なし × 延ばさない: 開始 + 計画時間", () => {
     const entry = baseEntry({ breakExtendsDeadline: false });
-    expect(calcDeadline(entry)).toEqual(new Date("2026-07-28T10:30:00.000Z"));
+    expect(calcDeadline(entry, arbitraryNow)).toEqual(new Date("2026-07-28T10:30:00.000Z"));
   });
 
   test("休憩あり（完了） × 延ばす: 累積休憩ぶん締切が後ろにずれる", () => {
     const entry = baseEntry({ breakExtendsDeadline: true, totalBreakSeconds: 300 });
-    expect(calcDeadline(entry)).toEqual(new Date("2026-07-28T10:35:00.000Z"));
+    expect(calcDeadline(entry, arbitraryNow)).toEqual(new Date("2026-07-28T10:35:00.000Z"));
   });
 
   test("休憩あり（完了） × 延ばさない: 締切は動かない（壁時計）", () => {
     const entry = baseEntry({ breakExtendsDeadline: false, totalBreakSeconds: 300 });
-    expect(calcDeadline(entry)).toEqual(new Date("2026-07-28T10:30:00.000Z"));
+    expect(calcDeadline(entry, arbitraryNow)).toEqual(new Date("2026-07-28T10:30:00.000Z"));
   });
 
   test("休憩中 × 延ばす: 現在休憩中の経過分も締切に加算する", () => {
@@ -55,18 +57,9 @@ describe("calcDeadline", () => {
     expect(calcDeadline(entry, now)).toEqual(new Date("2026-07-28T10:30:00.000Z"));
   });
 
-  test("休憩中 × 延ばす だが now を渡さない: 進行中の休憩分は0として扱う", () => {
-    const entry = baseEntry({
-      breakExtendsDeadline: true,
-      totalBreakSeconds: 60,
-      breakStartedAt: new Date("2026-07-28T10:10:00.000Z"),
-    });
-    expect(calcDeadline(entry)).toEqual(new Date("2026-07-28T10:31:00.000Z"));
-  });
-
   test("plannedDurationMinutes が null なら締切なし", () => {
     const entry = baseEntry({ plannedDurationMinutes: null });
-    expect(calcDeadline(entry)).toBeNull();
+    expect(calcDeadline(entry, arbitraryNow)).toBeNull();
   });
 });
 

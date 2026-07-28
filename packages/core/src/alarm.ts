@@ -8,11 +8,10 @@ export type AlarmEntry = {
 
 /**
  * 締切を計算する。`plannedDurationMinutes` が null なら締切なし（null）。
- * `breakExtendsDeadline = true` のとき、休憩時間ぶん締切を後ろに延ばす。
- * 休憩中（`breakStartedAt` あり）の経過分は `now` が無いと計算できないため、
- * `now` を省略した場合は「休憩中の経過分は 0」として扱う（内部で現在時刻は取得しない）。
+ * `breakExtendsDeadline = true` のとき、休憩時間ぶん締切を後ろに延ばす
+ * （休憩中なら `now` から進行中の休憩の経過分も加算する）。
  */
-export function calcDeadline(entry: AlarmEntry, now?: Date): Date | null {
+export function calcDeadline(entry: AlarmEntry, now: Date): Date | null {
   const {
     startedAt,
     plannedDurationMinutes,
@@ -30,9 +29,7 @@ export function calcDeadline(entry: AlarmEntry, now?: Date): Date | null {
   }
 
   const ongoingBreakSeconds =
-    breakStartedAt !== null && now !== undefined
-      ? Math.max(0, (now.getTime() - breakStartedAt.getTime()) / 1000)
-      : 0;
+    breakStartedAt !== null ? Math.max(0, (now.getTime() - breakStartedAt.getTime()) / 1000) : 0;
 
   return new Date(baseMs + (totalBreakSeconds + ongoingBreakSeconds) * 1000);
 }
