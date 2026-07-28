@@ -19,3 +19,7 @@ local.db
 .vscode/*
 !.vscode/extensions.json
 .idea/
+
+# ローカル専用（PR解説・学習ログ）
+docs/pr/
+docs/learning/
