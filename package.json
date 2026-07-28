@@ -17,7 +17,8 @@
     "dev:api": "bun run --filter @tsumori/api dev",
     "db:generate": "bun run --filter @tsumori/db generate",
     "db:migrate": "bun run --filter @tsumori/db migrate",
-    "db:studio": "bun run --filter @tsumori/db studio"
+    "db:studio": "bun run --filter @tsumori/db studio",
+    "db:migrate-legacy-auth": "bun run --filter @tsumori/db migrate-legacy-auth"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.0",
