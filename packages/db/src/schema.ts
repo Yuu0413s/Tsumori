@@ -233,7 +233,10 @@ export const userSettings = pgTable("user_settings", {
   soundEnabled: boolean("sound_enabled").notNull().default(true),
   preAlarmMinutes: integer("pre_alarm_minutes").notNull().default(5),
   createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
-  updatedAt: timestamp("updated_at", { mode: "date" }).$defaultFn(() => new Date()),
+  updatedAt: timestamp("updated_at", { mode: "date" })
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => new Date()),
 });
 
 // ==================== リレーション（アプリケーション固有） ====================
