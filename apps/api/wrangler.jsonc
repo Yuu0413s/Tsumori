@@ -10,7 +10,13 @@
   // 単一オリジン構成（#5）。tsumori-web の "/*" より先に /api/* が
   // マッチする（Workers Routes はパターンの具体度で優先されるため、
   // 定義順やデプロイ順には依存しない）。
-  "routes": [{ "pattern": "tsumori.yuu0413.com/api/*", "zone_name": "yuu0413.com" }],
+  // "/api/*" の "*" は "/api/" より後ろの文字列にしかマッチしないため、
+  // 末尾セグメントの無い "/api" 単体は別途 exact パターンで拾う
+  // （Codexレビュー指摘: これが無いと /api が web 側の SPA フォールバックに流れる）。
+  "routes": [
+    { "pattern": "tsumori.yuu0413.com/api", "zone_name": "yuu0413.com" },
+    { "pattern": "tsumori.yuu0413.com/api/*", "zone_name": "yuu0413.com" },
+  ],
 
   // Phase 4（アラーム）で有効化する。それまではコメントアウトのままでよい。
   // "triggers": { "crons": ["* * * * *"] },
