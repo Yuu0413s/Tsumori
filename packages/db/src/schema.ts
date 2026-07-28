@@ -207,6 +207,10 @@ export const timeEntries = pgTable("time_entries", {
 });
 
 // ==================== アラーム機能 新規テーブル ====================
+// userId は新しい `user`（better-auth）を参照する。categories/time_entries と
+// 参照先が食い違うが、これらは better-auth 移行（Issue #6/#7）完了後に
+// 使われ始める想定のため、意図的にこうしている。
+// Issue #7 より前にこのテーブルを使うコードを書かないこと。
 
 export const pushSubscriptions = pgTable(
   "push_subscriptions",
@@ -276,8 +280,12 @@ export const userSettingsRelations = relations(userSettings, ({ one }) => ({
 
 // ==================== 型エクスポート ====================
 
-export type User = typeof users.$inferSelect;
-export type NewUser = typeof users.$inferInsert;
+// users（Auth.js 旧テーブル）と user（better-auth 新テーブル）が同居しているため、
+// `User` 単体だとどちらを指すか紛らわしい。旧側には Legacy を付けて区別する。
+export type LegacyUser = typeof users.$inferSelect;
+export type NewLegacyUser = typeof users.$inferInsert;
+export type AuthUser = typeof user.$inferSelect;
+export type NewAuthUser = typeof user.$inferInsert;
 export type Category = typeof categories.$inferSelect;
 export type NewCategory = typeof categories.$inferInsert;
 export type TimeEntry = typeof timeEntries.$inferSelect;
