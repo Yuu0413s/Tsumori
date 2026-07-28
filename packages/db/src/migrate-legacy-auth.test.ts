@@ -9,6 +9,7 @@ import {
   filterUnmigrated,
   findOrphanedTimeEntryUserIds,
   findEmailConflicts,
+  findAccountIdConflicts,
 } from "./migrate-legacy-auth.js";
 
 const NOW = new Date("2026-07-29T00:00:00.000Z");
@@ -243,6 +244,65 @@ describe("findEmailConflicts", () => {
 
     const result = findEmailConflicts(plan.users, [
       { id: "other-id", email: "hanako@example.com" },
+    ]);
+
+    expect(result).toEqual([]);
+  });
+});
+
+describe("findAccountIdConflicts", () => {
+  test("同じ accountId が既に別 userId で登録されている場合は衝突として検出する", () => {
+    const plan = planMigration(
+      [],
+      [legacyAccount({ userId: "user_1", providerAccountId: "sub-1" })],
+      { now: NOW, generateAccountId: () => "generated-id" },
+    );
+
+    const result = findAccountIdConflicts(plan.accounts, [
+      { accountId: "sub-1", userId: "already-linked-to-other-user" },
+    ]);
+
+    expect(result).toEqual([
+      {
+        legacyUserId: "user_1",
+        accountId: "sub-1",
+        existingUserId: "already-linked-to-other-user",
+      },
+    ]);
+  });
+
+  test("同じ accountId・同じ userId は衝突ではない（再実行時に自分自身と一致するだけ）", () => {
+    const plan = planMigration(
+      [],
+      [legacyAccount({ userId: "user_1", providerAccountId: "sub-1" })],
+      { now: NOW, generateAccountId: () => "generated-id" },
+    );
+
+    const result = findAccountIdConflicts(plan.accounts, [
+      { accountId: "sub-1", userId: "user_1" },
+    ]);
+
+    expect(result).toEqual([]);
+  });
+
+  test("既存 account が空でも衝突は0件", () => {
+    const plan = planMigration(
+      [],
+      [legacyAccount({ userId: "user_1", providerAccountId: "sub-1" })],
+      { now: NOW },
+    );
+    expect(findAccountIdConflicts(plan.accounts, [])).toEqual([]);
+  });
+
+  test("accountId が一致しなければ衝突ではない", () => {
+    const plan = planMigration(
+      [],
+      [legacyAccount({ userId: "user_1", providerAccountId: "sub-1" })],
+      { now: NOW },
+    );
+
+    const result = findAccountIdConflicts(plan.accounts, [
+      { accountId: "sub-other", userId: "someone-else" },
     ]);
 
     expect(result).toEqual([]);

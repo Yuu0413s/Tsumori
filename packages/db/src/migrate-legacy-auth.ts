@@ -137,3 +137,36 @@ export function findEmailConflicts(
       : [];
   });
 }
+
+export interface ExistingGoogleAccount {
+  accountId: string;
+  userId: string;
+}
+
+export interface AccountIdConflict {
+  legacyUserId: string;
+  accountId: string;
+  existingUserId: string;
+}
+
+/**
+ * 同じ Google accountId が既に別の userId で登録されている場合を検出する。
+ * `filterUnmigrated` は accountId の一致だけで「移行済み」と判定するため、
+ * これを見逃すと「別の user に紐付いた Google アカウント」を黙ってスキップ
+ * してしまう（Issue #7 が警告する「移行前に一度ログインしてしまう」事故が
+ * 実際に起きていた場合に発生し得る。Codexレビュー対応）。
+ * plan（filterUnmigrated 前の全件）に対して呼ぶこと。
+ */
+export function findAccountIdConflicts(
+  plannedAccounts: NewAuthAccount[],
+  existingAccounts: ExistingGoogleAccount[],
+): AccountIdConflict[] {
+  const existingUserIdByAccountId = new Map(existingAccounts.map((a) => [a.accountId, a.userId]));
+
+  return plannedAccounts.flatMap((a) => {
+    const existingUserId = existingUserIdByAccountId.get(a.accountId);
+    return existingUserId !== undefined && existingUserId !== a.userId
+      ? [{ legacyUserId: a.userId, accountId: a.accountId, existingUserId }]
+      : [];
+  });
+}

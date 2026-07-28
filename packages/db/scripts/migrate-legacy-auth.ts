@@ -6,6 +6,7 @@ import {
   filterUnmigrated,
   findOrphanedTimeEntryUserIds,
   findEmailConflicts,
+  findAccountIdConflicts,
 } from "../src/migrate-legacy-auth.js";
 
 // Issue #7: Auth.js 旧テーブル（users/accounts）の実データを
@@ -32,13 +33,31 @@ async function main(databaseUrl: string) {
       db.select().from(accounts).where(eq(accounts.provider, "google")),
       db.select({ id: user.id, email: user.email }).from(user),
       db
-        .select({ accountId: account.accountId })
+        .select({ accountId: account.accountId, userId: account.userId })
         .from(account)
         .where(eq(account.providerId, "google")),
       db.select({ userId: timeEntries.userId }).from(timeEntries),
     ]);
 
   const plan = planMigration(legacyUsers, legacyGoogleAccounts);
+
+  // filterUnmigrated は accountId の一致だけで「移行済み」と判定するため、
+  // 同じ accountId が既に別 userId で登録されている食い違いをここで先に検出する
+  // （Issue #7が警告する「移行前にログインしてしまう」事故が起きていた場合に発生し得る）。
+  const accountIdConflicts = findAccountIdConflicts(plan.accounts, existingGoogleAccounts);
+  if (accountIdConflicts.length > 0) {
+    console.error(
+      `Google accountId が既に別の user に紐付いています（${accountIdConflicts.length}件）。書き込みを中止します。`,
+    );
+    for (const c of accountIdConflicts) {
+      console.error(
+        `  accountId=${c.accountId}: legacy accounts.userId=${c.legacyUserId} / 既存 account.userId=${c.existingUserId}`,
+      );
+    }
+    process.exitCode = 1;
+    return;
+  }
+
   const toInsert = filterUnmigrated(plan, {
     userIds: new Set(existingUsers.map((u) => u.id)),
     googleAccountIds: new Set(existingGoogleAccounts.map((a) => a.accountId)),
