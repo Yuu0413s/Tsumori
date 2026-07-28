@@ -25,16 +25,16 @@ Closes #
 
 ## 動作確認
 
-- [ ] `npm run lint` が通る
-- [ ] `npm run typecheck` が通る
-- [ ] `npm run build` が通る
+- [ ] `bun run lint` が通る
+- [ ] `bun run typecheck` が通る
+- [ ] `bun run build` が通る
 - [ ] ローカル（PC）で意図通り動く
 - [ ] スマホ実機で確認した（UI変更を含む場合は必須）
-- [ ] Vercel の Preview Deployment で確認した
+- [ ] Cloudflare Workers の動作を `bun run dev:api` / `bun run dev:web` で確認した
 
 ### DBスキーマを変更した場合
 
-- [ ] `npm run db:generate` を実行し、生成された SQL をコミットした
+- [ ] `bun run db:generate` を実行し、生成された SQL をコミットした
 - [ ] 生成された SQL の中身を目で読んで、意図しない `DROP` が無いことを確認した
 - [ ] ロールバック方法を把握している
 

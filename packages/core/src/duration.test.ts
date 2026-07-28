@@ -21,6 +21,14 @@ describe("formatDuration", () => {
   test("小数は切り捨てる", () => {
     expect(formatDuration(59.9)).toBe("00:00:59");
   });
+
+  test("NaN は 00:00:00", () => {
+    expect(formatDuration(NaN)).toBe("00:00:00");
+  });
+
+  test("Infinity は 00:00:00", () => {
+    expect(formatDuration(Infinity)).toBe("00:00:00");
+  });
 });
 
 describe("parseDurationMinutes", () => {
@@ -28,8 +36,16 @@ describe("parseDurationMinutes", () => {
     expect(parseDurationMinutes(30)).toBe(1800);
   });
 
+  test("0分は0秒に変換する", () => {
+    expect(parseDurationMinutes(0)).toBe(0);
+  });
+
   test("null はそのまま null", () => {
     expect(parseDurationMinutes(null)).toBeNull();
+  });
+
+  test("undefined はそのまま null", () => {
+    expect(parseDurationMinutes(undefined)).toBeNull();
   });
 
   test("負の値は null", () => {

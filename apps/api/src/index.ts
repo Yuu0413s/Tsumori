@@ -9,13 +9,13 @@ export type Bindings = {
 
 const app = new Hono<{ Bindings: Bindings }>().basePath("/api");
 
-// 開発中はローカルの Vite dev サーバーからのアクセスを許可する。
+// 開発中はローカルの Vite dev サーバー（5173番ポート固定）からのアクセスのみ許可する。
 // 本番は同一オリジン（tsumori.yuu0413.com）なので CORS は不要になる。
+// Cookie 認証は未実装のため credentials は付与しない。
 app.use(
   "*",
   cors({
-    origin: (origin) => (origin?.startsWith("http://localhost:") ? origin : null),
-    credentials: true,
+    origin: "http://localhost:5173",
   }),
 );
 

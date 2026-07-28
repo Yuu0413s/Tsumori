@@ -1,9 +1,9 @@
 /**
  * 秒数を HH:MM:SS 形式に整形する。
- * 負の値は 0 として扱う。
+ * 負の値・NaN・Infinity は 0 として扱う。
  */
 export function formatDuration(totalSeconds: number): string {
-  const safe = Math.max(0, Math.floor(totalSeconds));
+  const safe = Number.isFinite(totalSeconds) ? Math.max(0, Math.floor(totalSeconds)) : 0;
   const h = Math.floor(safe / 3600);
   const m = Math.floor((safe % 3600) / 60);
   const s = safe % 60;

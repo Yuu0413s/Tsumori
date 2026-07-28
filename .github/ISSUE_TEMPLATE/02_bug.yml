@@ -41,7 +41,7 @@ body:
         - "iPhone ホーム画面PWA"
         - "Android Chrome（ブラウザ）"
         - "Android ホーム画面PWA"
-        - "ローカル開発環境（npm run dev）"
+        - "ローカル開発環境（bun run dev:api / bun run dev:web）"
     validations:
       required: true
 
@@ -57,6 +57,6 @@ body:
     id: logs
     attributes:
       label: コンソールログ / スクリーンショット
-      description: ブラウザのDevToolsのエラーや、Vercelのログがあれば貼る。
+      description: ブラウザのDevToolsのエラーや、Cloudflare Workersのログ・ダッシュボードの情報があれば貼る。
     validations:
       required: false
