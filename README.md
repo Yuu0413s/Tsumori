@@ -60,13 +60,15 @@ Vite の dev サーバーが `/api` へのリクエストを `localhost:8787` �
 ## デプロイ
 
 ```
-tsumori.yuu0413.com/api/*   → tsumori-api    (Workers Routes)
-tsumori.yuu0413.com/*       → tsumori-web    (Workers Static Assets)
+tsumori.yuu0413.com/api, /api/*   → tsumori-api    (Workers Routes)
+tsumori.yuu0413.com/*             → tsumori-web    (Workers Static Assets)
 ```
 
 同一オリジンに揃えているため、CORS 設定と Cookie の domain 指定が不要です。
 ルーティング設定は各 `wrangler.jsonc` の `routes` に記述済みです
-（`/api/*` の方が具体的なパターンなので、定義順に関わらずそちらが優先されます）。
+（`/api` と `/api/*` の方が `/*` より具体的なパターンなので、定義順に関わらずそちらが優先されます。
+`/api/*` の `*` は `/api/` より後ろにしかマッチしないため、末尾セグメントの無い `/api` 単体は
+別途 `/api` の完全一致パターンで拾っています）。
 
 ### 初回セットアップ（`yuu0413.com` が Cloudflare 管理下にある前提）
 

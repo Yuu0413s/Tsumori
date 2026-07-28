@@ -12,7 +12,7 @@
   // 定義順やデプロイ順には依存しない）。
   // "/api/*" の "*" は "/api/" より後ろの文字列にしかマッチしないため、
   // 末尾セグメントの無い "/api" 単体は別途 exact パターンで拾う
-  // （Codexレビュー指摘: これが無いと /api が web 側の SPA フォールバックに流れる）。
+  // （これが無いと /api が web 側の SPA フォールバックに流れる）。
   "routes": [
     { "pattern": "tsumori.yuu0413.com/api", "zone_name": "yuu0413.com" },
     { "pattern": "tsumori.yuu0413.com/api/*", "zone_name": "yuu0413.com" },
