@@ -22,8 +22,8 @@ if (!databaseUrl) {
 
 const shouldExecute = process.argv.includes("--execute");
 
-async function main() {
-  const db = createDb(databaseUrl as string);
+async function main(databaseUrl: string) {
+  const db = createDb(databaseUrl);
 
   const [legacyUsers, legacyGoogleAccounts, existingUsers, existingGoogleAccounts, timeEntryRows] =
     await Promise.all([
@@ -80,7 +80,7 @@ async function main() {
   }
 }
 
-main().catch((err) => {
+main(databaseUrl).catch((err) => {
   console.error(err);
   process.exitCode = 1;
 });
