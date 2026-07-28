@@ -1,0 +1,62 @@
+name: "🐛 バグ報告"
+description: "動作がおかしい・エラーが出る"
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: 発生している事象
+      description: 何が起きているか。エラーメッセージがあればそのまま貼る。
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 再現手順
+      value: |
+        1. 
+        2. 
+        3.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期待する挙動
+    validations:
+      required: true
+
+  - type: dropdown
+    id: env-device
+    attributes:
+      label: 発生環境
+      multiple: true
+      options:
+        - "PC (Chrome)"
+        - "PC (Safari)"
+        - "iPhone Safari（ブラウザ）"
+        - "iPhone ホーム画面PWA"
+        - "Android Chrome（ブラウザ）"
+        - "Android ホーム画面PWA"
+        - "ローカル開発環境（bun run dev:api / bun run dev:web）"
+    validations:
+      required: true
+
+  - type: input
+    id: os-version
+    attributes:
+      label: OS / ブラウザのバージョン
+      placeholder: "例：iOS 18.5 / Safari"
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: コンソールログ / スクリーンショット
+      description: ブラウザのDevToolsのエラーや、Cloudflare Workersのログ・ダッシュボードの情報があれば貼る。
+    validations:
+      required: false

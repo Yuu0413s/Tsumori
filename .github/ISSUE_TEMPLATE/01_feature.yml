@@ -1,0 +1,70 @@
+name: "✨ 機能追加 / 改善"
+description: "新しい機能や既存機能の改善を提案する"
+title: "[Feat] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: background
+    attributes:
+      label: 背景 / 目的
+      description: なぜこれが必要なのか。どんな課題を解決するのか。
+      placeholder: |
+        例：予定時間を超えても気づけず、作業が延びてしまうことがある。
+    validations:
+      required: true
+
+  - type: textarea
+    id: what
+    attributes:
+      label: 実現したいこと
+      description: 何をどうするのか。UIがあれば簡単な図やラフでもOK。
+      placeholder: |
+        例：予定時間が経過したタイミングで、音と通知でユーザーに知らせる。
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 受け入れ条件（Acceptance Criteria）
+      description: "「これが全部できたら完了」と言える条件をチェックリストで書く。ここが曖昧なままだと実装が終わりません。"
+      value: |
+        - [ ] 
+        - [ ] 
+        - [ ]
+    validations:
+      required: true
+
+  - type: dropdown
+    id: scope
+    attributes:
+      label: 影響範囲
+      description: 複数選択可
+      multiple: true
+      options:
+        - "UI / コンポーネント"
+        - "API Route"
+        - "DBスキーマ（マイグレーション必要）"
+        - "認証"
+        - "Service Worker / PWA"
+        - "Push通知"
+        - "CI / インフラ"
+        - "ドキュメント"
+    validations:
+      required: true
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: 技術メモ / 参考リンク
+      description: 使う予定のライブラリ、参考記事、懸念点など。任意。
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: 確認
+      options:
+        - label: 同じ内容の Issue が既に無いか検索した
+          required: true

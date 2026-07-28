@@ -1,0 +1,124 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+# 設定リファレンス: https://docs.coderabbit.ai/reference/configuration
+
+# レビューコメント・PRサマリー・チャット応答をすべて日本語にする
+language: "ja-JP"
+
+early_access: false
+
+tone_instructions: |
+  日本語で、丁寧かつ簡潔にレビューしてください。
+  指摘は「何が問題か」→「なぜ問題か」→「どう直すか」の順で書いてください。
+  学習中の個人開発者が読む前提で、専門用語には短い補足を添えてください。
+  個人の好みの問題ではなく、バグ・セキュリティ・設計上の問題を優先してください。
+  問題が無いファイルについて無理に指摘を作らないでください。
+
+reviews:
+  # chill = 重要な指摘に絞る / assertive = 細かい指摘も出す
+  profile: "chill"
+
+  # true にすると CodeRabbit が Request Changes を付けてマージをブロックする。
+  # 個人開発では過剰なので false。
+  request_changes_workflow: false
+
+  high_level_summary: true
+  review_status: true
+  collapse_walkthrough: false
+
+  # 変更内容を詩で表現する機能。不要。
+  poem: false
+
+  auto_review:
+    enabled: true
+    # Draft PR はレビューしない（作業途中でノイズになるため）
+    drafts: false
+
+  instructions: |
+    このリポジトリは「Tsumori」という作業時間トラッカーの bun モノレポです。
+
+    構成:
+    - apps/web   : Vite + React 19 + TypeScript + Tailwind CSS v4（PWA）
+    - apps/api   : Hono（Cloudflare Workers）+ better-auth + Drizzle
+    - packages/core : 何にも依存しない純粋ロジック（bun test 対象）
+    - packages/db   : Drizzle スキーマとマイグレーション
+
+    守るべき依存方向:
+    - packages/core は他のどのパッケージにも依存してはいけない
+    - apps/web から packages/db を直接 import してはいけない（必ず api 経由）
+
+    指摘しなくてよいこと:
+    - import の並び順（ESLint が担当）
+    - 行の長さ・インデント・クォート（Prettier が担当）
+    - 個人的な命名の好み
+
+    優先して指摘してほしいこと:
+    - 認証・認可の抜け（他人のデータにアクセスできてしまう経路）
+    - 秘密情報の漏洩（ログ、レスポンス、クライアントバンドルへの混入）
+    - 時刻・タイマー計算のズレやオフバイワンエラー
+    - 破壊的なマイグレーション
+
+  path_filters:
+    - "!**/bun.lock"
+    - "!**/dist/**"
+    - "!**/.wrangler/**"
+    - "!packages/db/drizzle/meta/**"
+
+  path_instructions:
+    - path: "packages/core/**/*.ts"
+      instructions: |
+        ここは何にも依存しない純粋関数だけを置く場所です。
+        - DB / ブラウザAPI / fetch などへの依存が混入していないか確認してください。
+        - 時刻を扱う関数が Date.now() を内部で直接呼んでいないか確認してください。
+          テスト可能にするため、現在時刻は引数で受け取る設計にすべきです。
+        - 対応する *.test.ts があるか、境界値（0・負値・null・未設定）が
+          網羅されているか確認してください。
+
+    - path: "apps/api/**/*.ts"
+      instructions: |
+        Cloudflare Workers 上で動く Hono の API です。
+        - 認証・認可のチェック漏れを最優先で確認してください。
+          特に「userId の一致を検証せずにレコードを取得・更新している」箇所。
+        - process.env を使っていないか確認してください。Workers では c.env から取得します。
+        - 秘密情報がレスポンスやログに含まれていないか確認してください。
+          （passwordHash、トークン、接続文字列など）
+        - Drizzle のクエリでループ内 await による N+1 が起きていないか確認してください。
+
+    - path: "apps/web/**/*.{ts,tsx}"
+      instructions: |
+        Vite + React 19 のフロントエンドです。
+        - useEffect の本体で直接 setState していないか確認してください。
+        - 経過時間の計算が setInterval のカウント積み上げではなく、
+          Date.now() との差分の取り直しになっているか確認してください。
+          （タブがバックグラウンドに回るとタイマーが間引かれるため）
+        - VITE_ 接頭辞の環境変数に秘密情報が入っていないか確認してください。
+          これらはビルド成果物に埋め込まれ、ブラウザから見えます。
+        - スマホ幅（375px）でレイアウトが崩れないか、
+          タップ領域が44px以上あるか確認してください。
+
+    - path: "packages/db/src/schema.ts"
+      instructions: |
+        - カラム追加が「NOT NULL かつデフォルト値なし」になっていないか確認してください。
+          既存行があるテーブルではマイグレーションが失敗します。
+        - 外部キーの onDelete 指定が意図通りか確認してください。
+        - 日時カラムがタイムゾーンを考慮した型になっているか確認してください。
+
+    - path: "packages/db/drizzle/*.sql"
+      instructions: |
+        自動生成されたマイグレーションです。
+        - 意図しない DROP COLUMN / DROP TABLE が含まれていないか確認してください。
+          カラム名の変更が「削除＋追加」として生成されているとデータが消えます。
+
+    - path: "**/wrangler.jsonc"
+      instructions: |
+        - vars に秘密情報が直書きされていないか確認してください。
+          秘密情報は wrangler secret put で登録すべきです。
+        - compatibility_date と compatibility_flags の整合を確認してください。
+
+    - path: ".github/workflows/**"
+      instructions: |
+        - permissions が最小権限で明示されているか確認してください。
+        - Secrets がログに出力される経路がないか確認してください。
+        - サードパーティの action がバージョン固定されているか確認してください。
+
+chat:
+  auto_reply: true

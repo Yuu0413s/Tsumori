@@ -1,0 +1,44 @@
+name: "🔧 リファクタ / 設定 / ドキュメント"
+description: "機能追加ではない内部改善・環境整備・ドキュメント"
+title: "[Chore] "
+labels: ["chore"]
+body:
+  - type: dropdown
+    id: kind
+    attributes:
+      label: 種別
+      options:
+        - "リファクタリング"
+        - "パフォーマンス改善"
+        - "依存パッケージ更新"
+        - "CI / デプロイ設定"
+        - "テスト追加"
+        - "ドキュメント"
+        - "その他"
+    validations:
+      required: true
+
+  - type: textarea
+    id: what
+    attributes:
+      label: やること
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: 理由
+      description: なぜ今やるのか。放置した場合のリスク。
+    validations:
+      required: true
+
+  - type: textarea
+    id: done
+    attributes:
+      label: 完了条件
+      value: |
+        - [ ] 
+        - [ ]
+    validations:
+      required: true
