@@ -182,6 +182,15 @@ export const timeEntries = pgTable("time_entries", {
   // 元は text（UTC基準の YYYY-MM-DD）だった。日付比較・タイムゾーン処理のため
   // ネイティブ date 型に変更。既存値はテキストのままキャストして引き継ぐ
   // （UTC基準で計算されていた過去分の値自体は今回は補正しない）。
+  //
+  // マイグレーション適用前チェック（実施済み・再実施する場合は同じSQLを使う）：
+  //   旧アプリは date を toISOString().split("T")[0] でのみ書き込んでおり、
+  //   ユーザー入力や他経路で不正な値が入る余地が無いことをコードで確認済み。
+  //   その上で、以下のSQLで本番の全件が YYYY-MM-DD 形式であることも確認している。
+  //     SELECT id, date FROM time_entries WHERE date !~ '^\d{4}-\d{2}-\d{2}$';
+  //   → 今後、型変更を伴うマイグレーションを書くときは、適用前に必ずこの形で
+  //     対象カラムを全件検証すること（0003_condemned_sasquatch.sql の
+  //     ALTER COLUMN ... USING "date"::date はこの確認の上で適用済み）。
   date: date("date", { mode: "string" }).notNull(),
   plannedStartAt: timestamp("planned_start_at", { mode: "date" }),
   plannedDurationMinutes: integer("planned_duration_minutes"),
