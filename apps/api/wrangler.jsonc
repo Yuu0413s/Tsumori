@@ -1,0 +1,18 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "tsumori-api",
+  "main": "src/index.ts",
+  // Workers の Node.js 互換を有効にする（Drizzle / better-auth が必要とする）
+  "compatibility_date": "2026-07-27",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+
+  // Phase 4（アラーム）で有効化する。それまではコメントアウトのままでよい。
+  // "triggers": { "crons": ["* * * * *"] },
+
+  // 本番のシークレットは `wrangler secret put` で登録する。
+  // ここには秘密情報を書かないこと。
+  "vars": {
+    "ENVIRONMENT": "development",
+  },
+}

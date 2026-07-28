@@ -1,0 +1,21 @@
+node_modules/
+dist/
+.output/
+.wrangler/
+*.tsbuildinfo
+
+# env
+.env
+.env.*
+!.env.example
+
+# db dumps (パスワードハッシュを含むため絶対にコミットしない)
+*.dump
+*.sql.gz
+local.db
+
+# editor / os
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+.idea/

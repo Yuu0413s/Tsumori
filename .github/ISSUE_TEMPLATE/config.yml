@@ -1,0 +1,3 @@
+# テンプレートを使わない自由記述の Issue も許可する。
+# テンプレートを必ず使わせたい場合は false にする。
+blank_issues_enabled: true

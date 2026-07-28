@@ -1,0 +1,14 @@
+{
+  "name": "@tsumori/core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "bun test",
+    "build": "echo 'no build step (TS source is consumed directly)'"
+  }
+}
