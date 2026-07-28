@@ -90,9 +90,42 @@ describe("toGoogleAuthAccount", () => {
       providerId: "google",
       userId: "user_1",
       accessToken: "access-token-1",
+      refreshToken: null,
+      idToken: null,
+      scope: null,
+      accessTokenExpiresAt: null,
       createdAt: NOW,
       updatedAt: NOW,
     });
+  });
+
+  test("refreshToken/idToken/scopeも移行する", () => {
+    const result = toGoogleAuthAccount(
+      legacyAccount({
+        refresh_token: "refresh-token-1",
+        id_token: "id-token-1",
+        scope: "openid email",
+      }),
+      "new-account-id",
+      NOW,
+    );
+    expect(result.refreshToken).toBe("refresh-token-1");
+    expect(result.idToken).toBe("id-token-1");
+    expect(result.scope).toBe("openid email");
+  });
+
+  test("expires_at（Unix秒）を accessTokenExpiresAt（Date）に変換する", () => {
+    const result = toGoogleAuthAccount(
+      legacyAccount({ expires_at: 1_800_000_000 }),
+      "new-account-id",
+      NOW,
+    );
+    expect(result.accessTokenExpiresAt).toEqual(new Date(1_800_000_000 * 1000));
+  });
+
+  test("expires_at が null なら accessTokenExpiresAt も null", () => {
+    const result = toGoogleAuthAccount(legacyAccount({ expires_at: null }), "new-account-id", NOW);
+    expect(result.accessTokenExpiresAt).toBeNull();
   });
 
   test("google 以外の provider は MigrationValidationError を投げる", () => {

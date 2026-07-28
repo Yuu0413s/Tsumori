@@ -44,6 +44,12 @@ export function toGoogleAuthAccount(legacy: LegacyAccount, id: string, now: Date
     providerId: "google",
     userId: legacy.userId,
     accessToken: legacy.access_token,
+    refreshToken: legacy.refresh_token,
+    idToken: legacy.id_token,
+    scope: legacy.scope,
+    // Auth.js の expires_at は Unix秒（access_tokenの有効期限）。
+    // better-auth の accessTokenExpiresAt は Date のため変換する。
+    accessTokenExpiresAt: legacy.expires_at === null ? null : new Date(legacy.expires_at * 1000),
     createdAt: now,
     updatedAt: now,
   };
