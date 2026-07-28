@@ -3,6 +3,9 @@
   "name": "tsumori-web",
   "compatibility_date": "2026-07-27",
   "observability": { "enabled": true },
+  // 単一オリジン構成（#5）。apps/api の "/api/*" の方が具体的なパターンなので
+  // そちらが優先され、それ以外のパスがこの Worker（静的アセット）に届く。
+  "routes": [{ "pattern": "tsumori.yuu0413.com/*", "zone_name": "yuu0413.com" }],
   "assets": {
     "directory": "./dist",
     // SPA なので、存在しないパスは index.html を返す

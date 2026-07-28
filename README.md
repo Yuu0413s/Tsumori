@@ -65,19 +65,59 @@ tsumori.yuu0413.com/*       → tsumori-web    (Workers Static Assets)
 ```
 
 同一オリジンに揃えているため、CORS 設定と Cookie の domain 指定が不要です。
+ルーティング設定は各 `wrangler.jsonc` の `routes` に記述済みです
+（`/api/*` の方が具体的なパターンなので、定義順に関わらずそちらが優先されます）。
 
-```bash
-bun run --filter @tsumori/api deploy
-bun run --filter @tsumori/web deploy
-```
+### 初回セットアップ（`yuu0413.com` が Cloudflare 管理下にある前提）
 
-シークレットは `.env` ではなく Wrangler で登録します。
+1. **Wrangler にログイン**（初回のみ）
 
-```bash
-cd apps/api
-bunx wrangler secret put DATABASE_URL
-bunx wrangler secret put BETTER_AUTH_SECRET
-```
+   ```bash
+   bunx wrangler login
+   ```
+
+2. **DNS レコードを追加**（Cloudflare ダッシュボード → `yuu0413.com` → DNS）
+
+   Workers Routes は実体のオリジンサーバーを必要としないため、ダミーの
+   プロキシ済み（オレンジクラウド）レコードを追加します。
+
+   | Type | Name      | Content     | Proxy status |
+   | ---- | --------- | ----------- | ------------ |
+   | A    | `tsumori` | `192.0.2.1` | Proxied      |
+
+   `192.0.2.1` は疎通に使われない予約アドレス（TEST-NET-1）です。実際のリクエストは
+   Workers Routes によって Cloudflare のエッジ上で Worker に転送されるため、
+   このIPに実際に到達することはありません。
+   既存の `yuu0413.com`（ポートフォリオ）のレコードは変更しないでください。
+
+3. **シークレットを登録**（`.env` ではなく Wrangler 側）
+
+   ```bash
+   cd apps/api
+   bunx wrangler secret put DATABASE_URL
+   bunx wrangler secret put BETTER_AUTH_SECRET
+   ```
+
+4. **デプロイ**
+
+   ```bash
+   bun run --filter @tsumori/api deploy
+   bun run --filter @tsumori/web deploy
+   ```
+
+   初回デプロイ時に、各 `wrangler.jsonc` の `routes` に基づいて
+   Workers Route が自動作成されます。
+
+5. **動作確認**
+
+   ```bash
+   curl -i https://tsumori.yuu0413.com/api/health   # 200 が返ること
+   curl -i https://tsumori.yuu0413.com/             # web の index.html が返ること
+   curl -i https://tsumori.yuu0413.com/no-such-path # SPA なので index.html が返ること
+   curl -i https://yuu0413.com/                     # 既存ポートフォリオに影響が無いこと
+   ```
+
+以降のデプロイは 4. のコマンドのみで反映されます。
 
 ## ドキュメント
 
