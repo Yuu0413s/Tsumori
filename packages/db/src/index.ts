@@ -16,3 +16,4 @@ export function createDb(databaseUrl: string) {
 
 export { schema };
 export * from "./schema.js";
+export { createCategoryStore, type CategoryStore } from "./categories-repository.js";
