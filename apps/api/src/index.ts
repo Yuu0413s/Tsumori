@@ -1,13 +1,17 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { formatDuration } from "@tsumori/core";
+import { createDb, createCategoryStore } from "@tsumori/db";
 import { createAuth } from "./auth.js";
 import { requireAuth, type AuthVariables } from "./middleware/require-auth.js";
+import { createCategoriesRoutes } from "./routes/categories.js";
 import { isLocalDev, type Bindings } from "./env.js";
 
 export type { Bindings };
 
-const app = new Hono<{ Bindings: Bindings; Variables: AuthVariables }>().basePath("/api");
+type Env = { Bindings: Bindings; Variables: AuthVariables };
+
+const app = new Hono<Env>().basePath("/api");
 
 // 開発中はローカルの Vite dev サーバー（5173番ポート固定）からのアクセスのみ許可する。
 // 本番は同一オリジン（tsumori.yuu0413.com）なので CORS は不要になる。
@@ -38,10 +42,15 @@ const routes = app
   .get("/version", (c) => c.json({ name: "tsumori-api", version: "0.0.0" }))
   .get(
     "/me",
-    requireAuth<{ Bindings: Bindings; Variables: AuthVariables }>((c) =>
-      createAuth(c.env).api.getSession({ headers: c.req.raw.headers }),
-    ),
+    requireAuth<Env>((c) => createAuth(c.env).api.getSession({ headers: c.req.raw.headers })),
     (c) => c.json({ userId: c.get("userId") }),
+  )
+  .route(
+    "/categories",
+    createCategoriesRoutes(
+      (c) => createCategoryStore(createDb(c.env.DATABASE_URL)),
+      requireAuth<Env>((c) => createAuth(c.env).api.getSession({ headers: c.req.raw.headers })),
+    ),
   );
 
 // Hono RPC 用の型。apps/web と apps/mobile はこの型を import して
