@@ -201,6 +201,21 @@ describe("PATCH /:id", () => {
 
     expect(res.status).toBe(404);
   });
+
+  test("論理削除済みのカテゴリは404（GETに出てこないものはPATCHもできない）", async () => {
+    const { app } = buildApp(
+      [category({ id: "deleted", userId: OWNER_ID, isActive: false })],
+      OWNER_ID,
+    );
+
+    const res = await app.request("/deleted", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name: "x" }),
+    });
+
+    expect(res.status).toBe(404);
+  });
 });
 
 describe("DELETE /:id", () => {
@@ -232,6 +247,17 @@ describe("DELETE /:id", () => {
     expect(res.status).toBe(403);
     const found = await store.findById("common");
     expect(found?.isActive).toBe(true);
+  });
+
+  test("既に論理削除済みのカテゴリを再度DELETEすると404", async () => {
+    const { app } = buildApp(
+      [category({ id: "deleted", userId: OWNER_ID, isActive: false })],
+      OWNER_ID,
+    );
+
+    const res = await app.request("/deleted", { method: "DELETE" });
+
+    expect(res.status).toBe(404);
   });
 });
 

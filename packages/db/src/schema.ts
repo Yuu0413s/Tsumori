@@ -158,12 +158,15 @@ export const accountRelations = relations(account, ({ one }) => ({
 }));
 
 // ==================== アプリケーション固有テーブル（既存の移植） ====================
-// userId の参照先は現時点では旧 `users`（Auth.js）のまま。
-// better-auth への実データ移行（Issue #7）で `user` への付け替えを行う。
+// categories.userId は better-auth の user（Google認証）を参照する。
+// Issue #7の移行スクリプトは user.id に旧 users.id をそのまま引き継ぐため、
+// 移行済みユーザーの値は変わらないが、Issue #6以降にGoogleログインした
+// 新規ユーザーは旧 users に対応行が無く、旧テーブル参照のままだと
+// カテゴリ作成時にFK違反になっていた（Issue #8 Codexレビュー対応）。
 
 export const categories = pgTable("categories", {
   id: text("id").primaryKey(),
-  userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
+  userId: text("user_id").references(() => user.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   color: text("color").notNull().default("#3b82f6"),
   isActive: boolean("is_active").notNull().default(true),
@@ -255,9 +258,9 @@ export const userSettings = pgTable("user_settings", {
 // ==================== リレーション（アプリケーション固有） ====================
 
 export const categoriesRelations = relations(categories, ({ one, many }) => ({
-  user: one(users, {
+  user: one(user, {
     fields: [categories.userId],
-    references: [users.id],
+    references: [user.id],
   }),
   timeEntries: many(timeEntries),
 }));

@@ -59,7 +59,9 @@ export function createCategoriesRoutes(getStore: GetStore, authMiddleware: Middl
       const id = c.req.param("id");
       const store = getStore(c);
       const existing = await store.findById(id);
-      if (!existing) {
+      // 論理削除済み（isActive=false）は GET には出てこないため、
+      // PATCH からも「存在しない」として扱う（Codexレビュー対応）。
+      if (!existing || !existing.isActive) {
         return c.json({ error: "Not Found" }, 404);
       }
       if (!canModifyCategory(existing.userId, c.get("userId"))) {
@@ -92,7 +94,8 @@ export function createCategoriesRoutes(getStore: GetStore, authMiddleware: Middl
       const id = c.req.param("id");
       const store = getStore(c);
       const existing = await store.findById(id);
-      if (!existing) {
+      // 既に論理削除済みなら「存在しない」として扱う（PATCHと同じ理由。Codexレビュー対応）。
+      if (!existing || !existing.isActive) {
         return c.json({ error: "Not Found" }, 404);
       }
       if (!canModifyCategory(existing.userId, c.get("userId"))) {
