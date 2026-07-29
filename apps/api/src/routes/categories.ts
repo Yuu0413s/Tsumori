@@ -21,6 +21,13 @@ function readBody(value: unknown): Record<string, unknown> {
  */
 export function createCategoriesRoutes(getStore: GetStore, authMiddleware: MiddlewareHandler<Env>) {
   return new Hono<Env>()
+    .onError((err, c) => {
+      // findById 直後に別リクエストで削除される等のレース発生時、store側は
+      // 素の Error を投げるだけになる。他のエラー（400/403/404）と同じ
+      // { error } 形式に揃えるため、ここで一律 500 に変換する（セルフレビュー対応）。
+      console.error("categories route error", err);
+      return c.json({ error: "Internal Server Error" }, 500);
+    })
     .use("*", authMiddleware)
     .get("/", async (c) => {
       const store = getStore(c);

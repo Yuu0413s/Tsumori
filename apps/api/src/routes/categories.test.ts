@@ -234,3 +234,26 @@ describe("DELETE /:id", () => {
     expect(found?.isActive).toBe(true);
   });
 });
+
+describe("store が例外を投げたとき", () => {
+  test("500 を { error } 形式で返す（findById後の削除競合などを想定）", async () => {
+    const store = createFakeStore([category({ id: "own", userId: OWNER_ID })]);
+    const brokenStore: CategoryStore = {
+      ...store,
+      update: async () => {
+        throw new Error("boom");
+      },
+    };
+    const app = createCategoriesRoutes(() => brokenStore, asUser(OWNER_ID));
+
+    const res = await app.request("/own", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name: "更新後" }),
+    });
+    const body = (await res.json()) as { error: string };
+
+    expect(res.status).toBe(500);
+    expect(body.error).toBe("Internal Server Error");
+  });
+});
