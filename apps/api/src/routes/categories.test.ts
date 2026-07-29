@@ -54,16 +54,18 @@ function createFakeStore(initial: Category[] = []): CategoryStore {
       rows.set(created.id, created);
       return created;
     },
+    // 実DB実装（categories-repository.ts）と同じく、isActive=false（＝別リクエストが
+    // 先に論理削除した等）なら undefined を返す。存在チェックは呼び出し側（ルート）が行う。
     async update(id, patch) {
       const existing = rows.get(id);
-      if (!existing) throw new Error("not found");
+      if (!existing || !existing.isActive) return undefined;
       const updated = { ...existing, ...patch };
       rows.set(id, updated);
       return updated;
     },
     async softDelete(id) {
       const existing = rows.get(id);
-      if (!existing) throw new Error("not found");
+      if (!existing || !existing.isActive) return undefined;
       const updated = { ...existing, isActive: false };
       rows.set(id, updated);
       return updated;
@@ -262,7 +264,7 @@ describe("DELETE /:id", () => {
 });
 
 describe("store が例外を投げたとき", () => {
-  test("500 を { error } 形式で返す（findById後の削除競合などを想定）", async () => {
+  test("500 を { error } 形式で返す（DB接続断など、想定外の失敗を想定）", async () => {
     const store = createFakeStore([category({ id: "own", userId: OWNER_ID })]);
     const brokenStore: CategoryStore = {
       ...store,
@@ -281,5 +283,37 @@ describe("store が例外を投げたとき", () => {
 
     expect(res.status).toBe(500);
     expect(body.error).toBe("Internal Server Error");
+  });
+});
+
+describe("findById〜update/softDelete の間に別リクエストが先に削除した場合（レース対策）", () => {
+  test("PATCH: updateがundefinedを返したら404（500にはしない）", async () => {
+    const store = createFakeStore([category({ id: "own", userId: OWNER_ID })]);
+    const racyStore: CategoryStore = {
+      ...store,
+      update: async () => undefined,
+    };
+    const app = createCategoriesRoutes(() => racyStore, asUser(OWNER_ID));
+
+    const res = await app.request("/own", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name: "更新後" }),
+    });
+
+    expect(res.status).toBe(404);
+  });
+
+  test("DELETE: softDeleteがundefinedを返したら404（500にはしない）", async () => {
+    const store = createFakeStore([category({ id: "own", userId: OWNER_ID })]);
+    const racyStore: CategoryStore = {
+      ...store,
+      softDelete: async () => undefined,
+    };
+    const app = createCategoriesRoutes(() => racyStore, asUser(OWNER_ID));
+
+    const res = await app.request("/own", { method: "DELETE" });
+
+    expect(res.status).toBe(404);
   });
 });

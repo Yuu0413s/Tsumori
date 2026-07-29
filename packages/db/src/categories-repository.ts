@@ -6,8 +6,11 @@ export interface CategoryStore {
   listVisible(userId: string): Promise<Category[]>;
   findById(id: string): Promise<Category | undefined>;
   insert(row: NewCategory): Promise<Category>;
-  update(id: string, patch: Partial<Pick<NewCategory, "name" | "color">>): Promise<Category>;
-  softDelete(id: string): Promise<Category>;
+  update(
+    id: string,
+    patch: Partial<Pick<NewCategory, "name" | "color">>,
+  ): Promise<Category | undefined>;
+  softDelete(id: string): Promise<Category | undefined>;
 }
 
 /**
@@ -39,13 +42,16 @@ export function createCategoryStore(db: Database): CategoryStore {
       return created;
     },
 
+    // isActive=true をWHERE句自体に含めることで、findById直後に別リクエストが
+    // 先に論理削除した場合でも「更新できてしまう」レースを起こさない。
+    // 該当行が無ければ undefined を返し、404扱いはルート側に委ねる
+    // （Issue #8 Codexレビュー再指摘対応）。
     async update(id, patch) {
       const [updated] = await db
         .update(categories)
         .set(patch)
-        .where(eq(categories.id, id))
+        .where(and(eq(categories.id, id), eq(categories.isActive, true)))
         .returning();
-      if (!updated) throw new Error("カテゴリの更新に失敗しました");
       return updated;
     },
 
@@ -55,9 +61,8 @@ export function createCategoryStore(db: Database): CategoryStore {
       const [updated] = await db
         .update(categories)
         .set({ isActive: false })
-        .where(eq(categories.id, id))
+        .where(and(eq(categories.id, id), eq(categories.isActive, true)))
         .returning();
-      if (!updated) throw new Error("カテゴリの削除に失敗しました");
       return updated;
     },
   };

@@ -22,9 +22,10 @@ function readBody(value: unknown): Record<string, unknown> {
 export function createCategoriesRoutes(getStore: GetStore, authMiddleware: MiddlewareHandler<Env>) {
   return new Hono<Env>()
     .onError((err, c) => {
-      // findById 直後に別リクエストで削除される等のレース発生時、store側は
-      // 素の Error を投げるだけになる。他のエラー（400/403/404）と同じ
-      // { error } 形式に揃えるため、ここで一律 500 に変換する（セルフレビュー対応）。
+      // insert が行を返さない等、想定外の store 例外を一律 500 に変換する。
+      // 他のエラー（400/403/404）と同じ { error } 形式に揃えるため（セルフレビュー対応）。
+      // なお findById 直後の削除競合（PATCH/DELETE）は update/softDelete 側の
+      // WHERE(isActive=true) で検知し、404として扱う（別途Codexレビュー対応）。
       console.error("categories route error", err);
       return c.json({ error: "Internal Server Error" }, 500);
     })
@@ -88,6 +89,12 @@ export function createCategoriesRoutes(getStore: GetStore, authMiddleware: Middl
       }
 
       const updated = await store.update(id, patch);
+      // findById〜ここまでの間に別リクエストが先に論理削除した場合、
+      // update側のWHERE(isActive=true)がヒットせず undefined になる。
+      // その場合は404（他の「削除済みは存在しない」経路と揃える。Codexレビュー対応）。
+      if (!updated) {
+        return c.json({ error: "Not Found" }, 404);
+      }
       return c.json(updated);
     })
     .delete("/:id", async (c) => {
@@ -102,7 +109,11 @@ export function createCategoriesRoutes(getStore: GetStore, authMiddleware: Middl
         return c.json({ error: "Forbidden" }, 403);
       }
 
-      await store.softDelete(id);
+      const deleted = await store.softDelete(id);
+      // update と同じレース対策。既に削除済みなら undefined。
+      if (!deleted) {
+        return c.json({ error: "Not Found" }, 404);
+      }
       return c.body(null, 204);
     });
 }
