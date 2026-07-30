@@ -1,10 +1,11 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { formatDuration } from "@tsumori/core";
-import { createDb, createCategoryStore } from "@tsumori/db";
+import { createDb, createCategoryStore, createTimeEntryStore } from "@tsumori/db";
 import { createAuth } from "./auth.js";
 import { requireAuth, type AuthVariables } from "./middleware/require-auth.js";
 import { createCategoriesRoutes } from "./routes/categories.js";
+import { createTimeEntriesRoutes } from "./routes/time-entries.js";
 import { isLocalDev, type Bindings } from "./env.js";
 
 export type { Bindings };
@@ -48,6 +49,14 @@ const routes = app
   .route(
     "/categories",
     createCategoriesRoutes(
+      (c) => createCategoryStore(createDb(c.env.DATABASE_URL)),
+      requireAuth<Env>((c) => createAuth(c.env).api.getSession({ headers: c.req.raw.headers })),
+    ),
+  )
+  .route(
+    "/time-entries",
+    createTimeEntriesRoutes(
+      (c) => createTimeEntryStore(createDb(c.env.DATABASE_URL)),
       (c) => createCategoryStore(createDb(c.env.DATABASE_URL)),
       requireAuth<Env>((c) => createAuth(c.env).api.getSession({ headers: c.req.raw.headers })),
     ),

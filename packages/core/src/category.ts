@@ -23,3 +23,12 @@ export function isValidCategoryColor(color: unknown): color is string {
 export function canModifyCategory(categoryUserId: string | null, currentUserId: string): boolean {
   return categoryUserId !== null && categoryUserId === currentUserId;
 }
+
+/**
+ * カテゴリを（作業記録の紐付け先として）選択してよいか判定する。
+ * 編集不可の共通カテゴリ（userId が null）も選択自体は誰でもできる点が
+ * canModifyCategory との違い（Issue #9）。
+ */
+export function canUseCategory(categoryUserId: string | null, currentUserId: string): boolean {
+  return categoryUserId === null || categoryUserId === currentUserId;
+}
