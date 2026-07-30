@@ -20,9 +20,7 @@ export type SummarizableEntry = {
  * completedなら必ず入るが、念のため防御的にnullを許容する）。
  * 実績時間の降順で返す（画面で目立つカテゴリから並べるため）。
  */
-export function summarizeByCategory(
-  entries: readonly SummarizableEntry[],
-): CategorySummaryEntry[] {
+export function summarizeByCategory(entries: readonly SummarizableEntry[]): CategorySummaryEntry[] {
   const summaries = new Map<string, CategorySummaryEntry>();
 
   for (const entry of entries) {
