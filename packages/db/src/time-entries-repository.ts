@@ -34,6 +34,9 @@ export interface TimeEntryStore {
   end(
     id: string,
     patch: {
+      // findById〜end呼び出しの間に別リクエストが状態を変えていないかをDB側で検証するため、
+      // ルートが計算根拠にした状態（休憩を挟んだかどうか）を明示的に渡す（Codexレビュー対応）。
+      fromStatus: "working" | "on_break";
       endedAt: Date;
       durationMinutes: number;
       totalBreakSeconds: number;
@@ -98,6 +101,11 @@ export function createTimeEntryStore(db: Database): TimeEntryStore {
       return updated;
     },
 
+    // WHERE に fromStatus（呼び出し側がdurationMinutes計算の根拠にした状態）を含める。
+    // ne(status, "completed") のような緩い条件だと、findById〜ここまでの間に
+    // 別リクエストが working→on_break のように状態を進めていた場合でも更新が
+    // 成功してしまい、休憩を挟んでいない前提で計算した誤った実績時間を
+    // 保存してしまう（Codexレビュー対応）。
     async end(id, patch) {
       const [updated] = await db
         .update(timeEntries)
@@ -110,7 +118,7 @@ export function createTimeEntryStore(db: Database): TimeEntryStore {
           deviationReason: patch.deviationReason,
           updatedAt: new Date(),
         })
-        .where(and(eq(timeEntries.id, id), ne(timeEntries.status, "completed")))
+        .where(and(eq(timeEntries.id, id), eq(timeEntries.status, patch.fromStatus)))
         .returning();
       return updated;
     },

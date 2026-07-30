@@ -5,6 +5,7 @@ import { ActiveTimeEntryConflictError } from "@tsumori/db";
 import {
   isValidTimeEntryName,
   isValidPlannedDurationMinutes,
+  isValidDeviationReason,
   canModifyTimeEntry,
   canUseCategory,
   calcActualDurationMinutes,
@@ -162,8 +163,8 @@ export function createTimeEntriesRoutes(
 
       const body = readBody(await c.req.json().catch(() => null));
       const { reason } = body;
-      if (reason !== undefined && typeof reason !== "string") {
-        return c.json({ error: "reason は文字列で指定してください" }, 400);
+      if (!isValidDeviationReason(reason)) {
+        return c.json({ error: "reason は500文字以内の文字列で指定してください" }, 400);
       }
 
       const endedAt = now();
@@ -180,11 +181,14 @@ export function createTimeEntriesRoutes(
       );
 
       const updated = await store.end(id, {
+        fromStatus: existing.status,
         endedAt,
         durationMinutes,
         totalBreakSeconds,
         deviationReason: reason ?? null,
       });
+      // findById〜ここまでの間に別リクエストが状態を変えていた場合、
+      // fromStatusが一致せず undefined になる（durationMinutes計算の前提が崩れるため）。
       if (!updated) return c.json({ error: "既に終了しています" }, 409);
       return c.json(updated);
     });

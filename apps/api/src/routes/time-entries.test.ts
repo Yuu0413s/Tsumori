@@ -124,10 +124,21 @@ function createFakeStore(
       rows.set(id, updated);
       return updated;
     },
+    // 実ストア（time-entries-repository.ts）と同じく、fromStatusが現在の状態と
+    // 一致しない（＝findById〜end呼び出しの間に別リクエストが状態を変えた）場合は
+    // undefinedを返す。
     async end(id, patch) {
       const existing = rows.get(id);
-      if (!existing || existing.status === "completed") return undefined;
-      const updated = { ...existing, status: "completed" as const, breakStartedAt: null, ...patch };
+      if (!existing || existing.status !== patch.fromStatus) return undefined;
+      const updated: TimeEntry = {
+        ...existing,
+        status: "completed",
+        breakStartedAt: null,
+        endedAt: patch.endedAt,
+        durationMinutes: patch.durationMinutes,
+        totalBreakSeconds: patch.totalBreakSeconds,
+        deviationReason: patch.deviationReason,
+      };
       rows.set(id, updated);
       return updated;
     },
@@ -619,6 +630,22 @@ describe("PATCH /:id/end", () => {
     expect(res.status).toBe(400);
   });
 
+  test("reasonが501文字以上なら400", async () => {
+    const { app } = buildApp(
+      [timeEntry({ id: "entry_1", status: "working" })],
+      [category()],
+      OWNER_ID,
+    );
+
+    const res = await app.request("/entry_1/end", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ reason: "あ".repeat(501) }),
+    });
+
+    expect(res.status).toBe(400);
+  });
+
   test("既に終了している記録は409", async () => {
     const { app } = buildApp(
       [timeEntry({ id: "entry_1", status: "completed" })],
@@ -740,5 +767,34 @@ describe("findById〜更新の間に別リクエストが先に状態を変え�
     const res = await app.request("/entry_1/end", { method: "PATCH" });
 
     expect(res.status).toBe(409);
+  });
+
+  test("end: findById直後に別リクエストが先に休憩を開始した場合は409（実績時間の計算前提が崩れるため）", async () => {
+    const store = createFakeStore([timeEntry({ id: "entry_1", status: "working" })]);
+    // ルートの findById が "working" を返した直後、別リクエスト（/break）が
+    // 先に割り込んで状態を "on_break" に進めてしまった状況を再現する。
+    // ルート側はあくまで自分が読んだ古い "working" を前提に durationMinutes を
+    // 計算するため、DB側の fromStatus チェックで弾かれるべきケース。
+    const racyStore: TimeEntryStore = {
+      ...store,
+      findById: async (id) => {
+        const found = await store.findById(id);
+        if (found) await store.startBreak(id, new Date("2026-07-29T10:20:00.000Z"));
+        return found;
+      },
+    };
+    const categoryStore = createFakeCategoryStore([category()]);
+    const app = createTimeEntriesRoutes(
+      () => racyStore,
+      () => categoryStore,
+      asUser(OWNER_ID),
+      () => FIXED_NOW,
+    );
+
+    const res = await app.request("/entry_1/end", { method: "PATCH" });
+
+    expect(res.status).toBe(409);
+    // 割り込んだ休憩開始が上書きされていないことも確認する
+    expect((await store.findById("entry_1"))?.status).toBe("on_break");
   });
 });

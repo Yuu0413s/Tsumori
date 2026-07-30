@@ -3,6 +3,7 @@ import {
   canModifyTimeEntry,
   isValidTimeEntryName,
   isValidPlannedDurationMinutes,
+  isValidDeviationReason,
   calcActualDurationMinutes,
   accumulateBreakSeconds,
 } from "./time-entry.js";
@@ -78,6 +79,29 @@ describe("isValidPlannedDurationMinutes", () => {
 
   test("null は無効", () => {
     expect(isValidPlannedDurationMinutes(null)).toBe(false);
+  });
+});
+
+describe("isValidDeviationReason", () => {
+  test("通常の文字列は有効", () => {
+    expect(isValidDeviationReason("会議が延びた")).toBe(true);
+  });
+
+  test("未指定（undefined）は有効（乖離理由は任意）", () => {
+    expect(isValidDeviationReason(undefined)).toBe(true);
+  });
+
+  test("500文字ちょうどは有効", () => {
+    expect(isValidDeviationReason("あ".repeat(500))).toBe(true);
+  });
+
+  test("501文字以上は無効", () => {
+    expect(isValidDeviationReason("あ".repeat(501))).toBe(false);
+  });
+
+  test("文字列以外は無効", () => {
+    expect(isValidDeviationReason(123)).toBe(false);
+    expect(isValidDeviationReason(null)).toBe(false);
   });
 });
 

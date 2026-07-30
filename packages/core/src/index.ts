@@ -11,6 +11,7 @@ export {
   canModifyTimeEntry,
   isValidTimeEntryName,
   isValidPlannedDurationMinutes,
+  isValidDeviationReason,
   calcActualDurationMinutes,
   accumulateBreakSeconds,
 } from "./time-entry.js";

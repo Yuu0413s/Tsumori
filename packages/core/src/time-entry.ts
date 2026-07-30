@@ -1,4 +1,5 @@
 const MAX_NAME_LENGTH = 200;
+const MAX_DEVIATION_REASON_LENGTH = 500;
 
 /**
  * 作業記録を操作してよいか判定する。
@@ -24,6 +25,15 @@ export function isValidTimeEntryName(name: unknown): name is string | undefined 
 export function isValidPlannedDurationMinutes(minutes: unknown): minutes is number | undefined {
   if (minutes === undefined) return true;
   return typeof minutes === "number" && Number.isInteger(minutes) && minutes >= 0;
+}
+
+/**
+ * 乖離理由として有効か判定する。任意項目のため undefined は許容するが、
+ * 上限（500文字）を超える入力は弾く（nameと同様、textカラムでも無制限にはしない）。
+ */
+export function isValidDeviationReason(reason: unknown): reason is string | undefined {
+  if (reason === undefined) return true;
+  return typeof reason === "string" && reason.length <= MAX_DEVIATION_REASON_LENGTH;
 }
 
 /**
