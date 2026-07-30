@@ -19,3 +19,17 @@ export function parseDurationMinutes(minutes: number | null | undefined): number
   if (!Number.isFinite(minutes) || minutes < 0) return null;
   return Math.floor(minutes) * 60;
 }
+
+/**
+ * 分数を「1時間30分」のような日本語表記に整形する（サマリー画面表示用）。
+ * formatDuration（HH:MM:SS）とは用途が異なり、こちらは人が読む一覧・集計向け。
+ * 負の値・NaN・Infinityは0分として扱う。
+ */
+export function formatMinutes(totalMinutes: number): string {
+  const safe = Number.isFinite(totalMinutes) ? Math.max(0, Math.floor(totalMinutes)) : 0;
+  const h = Math.floor(safe / 60);
+  const m = safe % 60;
+  if (h === 0) return `${m}分`;
+  if (m === 0) return `${h}時間`;
+  return `${h}時間${m}分`;
+}

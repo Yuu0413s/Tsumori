@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { formatDuration, parseDurationMinutes } from "./duration.js";
+import { formatDuration, parseDurationMinutes, formatMinutes } from "./duration.js";
 
 describe("formatDuration", () => {
   test("0秒は 00:00:00", () => {
@@ -50,5 +50,39 @@ describe("parseDurationMinutes", () => {
 
   test("負の値は null", () => {
     expect(parseDurationMinutes(-1)).toBeNull();
+  });
+});
+
+describe("formatMinutes", () => {
+  test("0分は 0分", () => {
+    expect(formatMinutes(0)).toBe("0分");
+  });
+
+  test("60分未満は分だけ", () => {
+    expect(formatMinutes(45)).toBe("45分");
+  });
+
+  test("ちょうど1時間は「時間」のみ", () => {
+    expect(formatMinutes(60)).toBe("1時間");
+  });
+
+  test("時間と分が両方ある場合", () => {
+    expect(formatMinutes(90)).toBe("1時間30分");
+  });
+
+  test("負の値は 0分", () => {
+    expect(formatMinutes(-10)).toBe("0分");
+  });
+
+  test("小数は切り捨てる", () => {
+    expect(formatMinutes(90.9)).toBe("1時間30分");
+  });
+
+  test("NaN は 0分", () => {
+    expect(formatMinutes(NaN)).toBe("0分");
+  });
+
+  test("Infinity は 0分", () => {
+    expect(formatMinutes(Infinity)).toBe("0分");
   });
 });
