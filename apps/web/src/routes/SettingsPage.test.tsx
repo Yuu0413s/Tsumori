@@ -25,6 +25,13 @@ mock.module("../hooks/use-categories.js", () => ({
 }));
 mock.module("../lib/auth-client.js", () => ({
   signOut: signOutMock,
+  // このファイルでは使わないが、mock.module はプロセス内でモジュールパスを
+  // グローバルに差し替える（テストファイルをまたいで有効）。LoginPage.tsx が
+  // 静的importする signIn、RequireAuth.tsx/RequireGuest.tsx が静的importする
+  // useSession が欠けたままだと、CIでの実行順序次第でそれらのテストが
+  // 「exportが見つからない」エラーで壊れる（実際にCIで発生した）。
+  signIn: { social: mock() },
+  useSession: mock(),
 }));
 
 const { SettingsPage } = await import("./SettingsPage.js");
