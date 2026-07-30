@@ -1,5 +1,9 @@
 const MAX_NAME_LENGTH = 200;
 const MAX_DEVIATION_REASON_LENGTH = 500;
+// DBのinteger範囲（2147483647）まで許すと「1回の作業記録の計画時間」としては
+// 非現実的な値まで通ってしまう。1回のセッションの計画時間として現実的な上限
+// （24時間）に絞る（Codexレビュー対応）。
+const MAX_PLANNED_DURATION_MINUTES = 1440;
 
 /**
  * 作業記録を操作してよいか判定する。
@@ -24,7 +28,12 @@ export function isValidTimeEntryName(name: unknown): name is string | undefined 
  */
 export function isValidPlannedDurationMinutes(minutes: unknown): minutes is number | undefined {
   if (minutes === undefined) return true;
-  return typeof minutes === "number" && Number.isInteger(minutes) && minutes >= 0;
+  return (
+    typeof minutes === "number" &&
+    Number.isInteger(minutes) &&
+    minutes >= 0 &&
+    minutes <= MAX_PLANNED_DURATION_MINUTES
+  );
 }
 
 /**

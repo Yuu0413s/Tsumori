@@ -80,6 +80,14 @@ describe("isValidPlannedDurationMinutes", () => {
   test("null は無効", () => {
     expect(isValidPlannedDurationMinutes(null)).toBe(false);
   });
+
+  test("1440分（24時間）ちょうどは有効", () => {
+    expect(isValidPlannedDurationMinutes(1440)).toBe(true);
+  });
+
+  test("1441分以上は無効（1回のセッションとして非現実的な値は弾く）", () => {
+    expect(isValidPlannedDurationMinutes(1441)).toBe(false);
+  });
 });
 
 describe("isValidDeviationReason", () => {

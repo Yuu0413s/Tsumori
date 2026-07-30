@@ -50,6 +50,13 @@
       "when": 1785294901344,
       "tag": "0006_vengeful_misty_knight",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1785387400531,
+      "tag": "0007_confused_senator_kelly",
+      "breakpoints": true
     }
   ]
 }

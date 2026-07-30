@@ -349,6 +349,18 @@ describe("POST /", () => {
     expect(res.status).toBe(400);
   });
 
+  test("plannedDurationMinutes が上限（1440分）を超えたら400", async () => {
+    const { app } = buildApp([], [category()], OWNER_ID);
+
+    const res = await app.request("/", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ categoryId: CATEGORY_ID, plannedDurationMinutes: 1441 }),
+    });
+
+    expect(res.status).toBe(400);
+  });
+
   test("存在しないcategoryIdなら400", async () => {
     const { app } = buildApp([], [category()], OWNER_ID);
 

@@ -232,6 +232,12 @@ export const timeEntries = pgTable(
     uniqueIndex("time_entries_one_active_per_user_idx")
       .on(table.userId)
       .where(sql`${table.status} <> 'completed'`),
+    // GET /today（ユーザー・当日・完了済みで絞り込みstartedAt降順）専用のインデックス。
+    // 上の部分ユニークインデックスは status <> 'completed' 側にしか効かないため、
+    // 完了済みの絞り込みにはこちらが必要（Codexレビュー対応）。
+    index("time_entries_user_date_completed_started_idx")
+      .on(table.userId, table.date, table.startedAt)
+      .where(sql`${table.status} = 'completed'`),
   ],
 );
 
