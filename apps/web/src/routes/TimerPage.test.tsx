@@ -18,6 +18,13 @@ mock.module("../hooks/use-time-entry.js", () => ({
 }));
 mock.module("../hooks/use-categories.js", () => ({
   useCategories: useCategoriesMock,
+  // このファイルでは使わないが、mock.module はプロセス内でモジュールパスを
+  // グローバルに差し替えるため（テストファイルをまたいで有効）、他ファイル
+  // （SettingsPage.test.tsx）が期待するexportの形と揃えておかないと、
+  // 実行順序によって「exportが見つからない」エラーになる。
+  useCreateCategory: mock(),
+  useUpdateCategory: mock(),
+  useHideCategory: mock(),
 }));
 mock.module("../hooks/use-clock.js", () => ({
   useClock: useClockMock,

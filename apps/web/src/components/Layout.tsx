@@ -26,6 +26,9 @@ export function Layout() {
           <NavLink to="/summary" className={navLinkClassName}>
             サマリー
           </NavLink>
+          <NavLink to="/settings" className={navLinkClassName}>
+            設定
+          </NavLink>
         </nav>
       </header>
       <main className="px-4 py-6">
