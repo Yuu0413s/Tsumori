@@ -22,3 +22,8 @@ export {
   ActiveTimeEntryConflictError,
   type TimeEntryStore,
 } from "./time-entries-repository.js";
+export {
+  createUserSettingsStore,
+  type UserSettingsStore,
+  type SettingsPatch,
+} from "./user-settings-repository.js";

@@ -15,3 +15,8 @@ export {
   calcActualDurationMinutes,
   accumulateBreakSeconds,
 } from "./time-entry.js";
+export {
+  isValidBreakExtendsDeadline,
+  isValidSoundEnabled,
+  isValidPreAlarmMinutes,
+} from "./settings.js";
