@@ -48,7 +48,7 @@ function StartTimerForm() {
     <form
       onSubmit={(e) => {
         e.preventDefault();
-        if (categoryId === "") return;
+        if (categoryId === "" || startTimeEntry.isPending) return;
         startTimeEntry.mutate({
           categoryId,
           name: name.trim() === "" ? undefined : name.trim(),

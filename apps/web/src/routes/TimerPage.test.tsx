@@ -156,6 +156,19 @@ describe("TimerPage", () => {
         plannedDurationMinutes: undefined,
       });
     });
+
+    test("開始リクエスト実行中は、submitイベントが来てもstartTimeEntryを呼ばない（多重送信防止）", () => {
+      const mutate = mock();
+      useStartTimeEntryMock.mockReturnValue(mutationResult({ mutate, isPending: true }));
+      const { container } = render(<TimerPage />);
+
+      fireEvent.change(screen.getByLabelText("カテゴリ"), { target: { value: "cat_1" } });
+      const form = container.querySelector("form");
+      if (form === null) throw new Error("form要素が見つかりません");
+      fireEvent.submit(form);
+
+      expect(mutate).not.toHaveBeenCalled();
+    });
   });
 
   describe("進行中の記録がある場合（タイマー実行中）", () => {
