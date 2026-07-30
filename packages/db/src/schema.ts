@@ -270,7 +270,9 @@ export const userSettings = pgTable("user_settings", {
     .references(() => user.id, { onDelete: "cascade" }),
   breakExtendsDeadline: boolean("break_extends_deadline").notNull().default(true),
   soundEnabled: boolean("sound_enabled").notNull().default(true),
-  preAlarmMinutes: integer("pre_alarm_minutes").notNull().default(5),
+  // Issue #10 の決定済み仕様：null は「予告しない」を意味する有効値のため、
+  // NOT NULL にしない（元は仮のNOT NULL DEFAULT 5だったが、実装に合わせて修正）。
+  preAlarmMinutes: integer("pre_alarm_minutes"),
   createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { mode: "date" })
     .notNull()
