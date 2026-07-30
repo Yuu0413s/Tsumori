@@ -1,4 +1,4 @@
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
   pgTable,
   text,
@@ -8,6 +8,7 @@ import {
   boolean,
   primaryKey,
   index,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 
 // ==================== Auth.js 旧スキーマ（複数形テーブル） ====================
@@ -173,50 +174,72 @@ export const categories = pgTable("categories", {
   createdAt: timestamp("created_at", { mode: "date" }).$defaultFn(() => new Date()),
 });
 
-export const timeEntries = pgTable("time_entries", {
-  id: text("id").primaryKey(),
-  userId: text("user_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  categoryId: text("category_id")
-    .notNull()
-    .references(() => categories.id),
-  name: text("name"),
-  // 元は text（UTC基準の YYYY-MM-DD）だった。日付比較・タイムゾーン処理のため
-  // ネイティブ date 型に変更。既存値はテキストのままキャストして引き継ぐ
-  // （UTC基準で計算されていた過去分の値自体は今回は補正しない）。
-  //
-  // マイグレーション適用前チェック（実施済み・再実施する場合は同じSQLを使う）：
-  //   旧アプリは date を toISOString().split("T")[0] でのみ書き込んでおり、
-  //   ユーザー入力や他経路で不正な値が入る余地が無いことをコードで確認済み。
-  //   その上で、以下のSQLで本番の全件が YYYY-MM-DD 形式であることも確認している。
-  //     SELECT id, date FROM time_entries WHERE date !~ '^\d{4}-\d{2}-\d{2}$';
-  //   → 今後、型変更を伴うマイグレーションを書くときは、適用前に必ずこの形で
-  //     対象カラムを全件検証すること（0003_condemned_sasquatch.sql の
-  //     ALTER COLUMN ... USING "date"::date はこの確認の上で適用済み）。
-  date: date("date", { mode: "string" }).notNull(),
-  plannedStartAt: timestamp("planned_start_at", { mode: "date" }),
-  plannedDurationMinutes: integer("planned_duration_minutes"),
-  startedAt: timestamp("started_at", { mode: "date" }).notNull(),
-  endedAt: timestamp("ended_at", { mode: "date" }),
-  durationMinutes: integer("duration_minutes"),
-  breakStartedAt: timestamp("break_started_at", { mode: "date" }),
-  totalBreakSeconds: integer("total_break_seconds").notNull().default(0),
-  status: text("status", { enum: ["working", "on_break", "completed"] })
-    .notNull()
-    .default("working"),
-  memo: text("memo"),
-  deviationFocused: boolean("deviation_focused"),
-  deviationReason: text("deviation_reason"),
-  // アラーム機能（新規）
-  alarmEnabled: boolean("alarm_enabled").notNull().default(true),
-  alarmFiredAt: timestamp("alarm_fired_at", { mode: "date" }),
-  // 開始時点の設定値のスナップショット。あとで設定を変えても
-  // 進行中タスクの締切には影響させないための保持。
-  breakExtendsDeadline: boolean("break_extends_deadline").notNull().default(true),
-  createdAt: timestamp("created_at", { mode: "date" }).$defaultFn(() => new Date()),
-  updatedAt: timestamp("updated_at", { mode: "date" }).$defaultFn(() => new Date()),
-});
+export const timeEntries = pgTable(
+  "time_entries",
+  {
+    id: text("id").primaryKey(),
+    // categories.userId と同じ理由（Issue #8）で、旧 users ではなく
+    // better-auth の user を参照する（Issue #9 で付け替え）。
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    categoryId: text("category_id")
+      .notNull()
+      .references(() => categories.id),
+    name: text("name"),
+    // 元は text（UTC基準の YYYY-MM-DD）だった。日付比較・タイムゾーン処理のため
+    // ネイティブ date 型に変更。既存値はテキストのままキャストして引き継ぐ
+    // （UTC基準で計算されていた過去分の値自体は今回は補正しない）。
+    //
+    // マイグレーション適用前チェック（実施済み・再実施する場合は同じSQLを使う）：
+    //   旧アプリは date を toISOString().split("T")[0] でのみ書き込んでおり、
+    //   ユーザー入力や他経路で不正な値が入る余地が無いことをコードで確認済み。
+    //   その上で、以下のSQLで本番の全件が YYYY-MM-DD 形式であることも確認している。
+    //     SELECT id, date FROM time_entries WHERE date !~ '^\d{4}-\d{2}-\d{2}$';
+    //   → 今後、型変更を伴うマイグレーションを書くときは、適用前に必ずこの形で
+    //     対象カラムを全件検証すること（0003_condemned_sasquatch.sql の
+    //     ALTER COLUMN ... USING "date"::date はこの確認の上で適用済み）。
+    date: date("date", { mode: "string" }).notNull(),
+    plannedStartAt: timestamp("planned_start_at", { mode: "date" }),
+    plannedDurationMinutes: integer("planned_duration_minutes"),
+    startedAt: timestamp("started_at", { mode: "date" }).notNull(),
+    endedAt: timestamp("ended_at", { mode: "date" }),
+    durationMinutes: integer("duration_minutes"),
+    breakStartedAt: timestamp("break_started_at", { mode: "date" }),
+    totalBreakSeconds: integer("total_break_seconds").notNull().default(0),
+    status: text("status", { enum: ["working", "on_break", "completed"] })
+      .notNull()
+      .default("working"),
+    memo: text("memo"),
+    deviationFocused: boolean("deviation_focused"),
+    deviationReason: text("deviation_reason"),
+    // アラーム機能（新規）
+    alarmEnabled: boolean("alarm_enabled").notNull().default(true),
+    alarmFiredAt: timestamp("alarm_fired_at", { mode: "date" }),
+    // 開始時点の設定値のスナップショット。あとで設定を変えても
+    // 進行中タスクの締切には影響させないための保持。
+    breakExtendsDeadline: boolean("break_extends_deadline").notNull().default(true),
+    createdAt: timestamp("created_at", { mode: "date" }).$defaultFn(() => new Date()),
+    updatedAt: timestamp("updated_at", { mode: "date" }).$defaultFn(() => new Date()),
+  },
+  // 「同時に1件しか進行中を持てない」（Issue #9）をDB制約でも保証する。
+  // アプリ側の事前チェックだけだと、開始リクエストが同時に来た場合に
+  // チェックと INSERT の間で競合し、2件の進行中エントリができてしまう
+  // （TOCTOU。categories#8 で指摘された種類のレースと同種）。
+  // 部分ユニークインデックスにすることで、競合時は2件目の INSERT が
+  // DBレベルで拒否される。
+  (table) => [
+    uniqueIndex("time_entries_one_active_per_user_idx")
+      .on(table.userId)
+      .where(sql`${table.status} <> 'completed'`),
+    // GET /today（ユーザー・当日・完了済みで絞り込みstartedAt降順）専用のインデックス。
+    // 上の部分ユニークインデックスは status <> 'completed' 側にしか効かないため、
+    // 完了済みの絞り込みにはこちらが必要（Codexレビュー対応）。
+    index("time_entries_user_date_completed_started_idx")
+      .on(table.userId, table.date, table.startedAt)
+      .where(sql`${table.status} = 'completed'`),
+  ],
+);
 
 // ==================== アラーム機能 新規テーブル ====================
 // userId は新しい `user`（better-auth）を参照する。categories/time_entries と
@@ -266,9 +289,11 @@ export const categoriesRelations = relations(categories, ({ one, many }) => ({
 }));
 
 export const timeEntriesRelations = relations(timeEntries, ({ one }) => ({
-  user: one(users, {
+  // userId カラム自体は better-auth の user を参照する（Issue #9）。
+  // relation 側もそれに合わせる（Codexレビュー対応：ここだけ旧 users のままだった）。
+  user: one(user, {
     fields: [timeEntries.userId],
-    references: [users.id],
+    references: [user.id],
   }),
   category: one(categories, {
     fields: [timeEntries.categoryId],

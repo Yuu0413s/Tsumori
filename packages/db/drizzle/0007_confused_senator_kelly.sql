@@ -1,0 +1,1 @@
+CREATE INDEX "time_entries_user_date_completed_started_idx" ON "time_entries" USING btree ("user_id","date","started_at") WHERE "time_entries"."status" = 'completed';

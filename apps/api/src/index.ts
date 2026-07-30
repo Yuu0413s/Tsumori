@@ -1,15 +1,29 @@
 import { Hono } from "hono";
+import type { Context } from "hono";
 import { cors } from "hono/cors";
 import { formatDuration } from "@tsumori/core";
-import { createDb, createCategoryStore } from "@tsumori/db";
+import { createDb, createCategoryStore, createTimeEntryStore, type Database } from "@tsumori/db";
 import { createAuth } from "./auth.js";
 import { requireAuth, type AuthVariables } from "./middleware/require-auth.js";
 import { createCategoriesRoutes } from "./routes/categories.js";
+import { createTimeEntriesRoutes } from "./routes/time-entries.js";
 import { isLocalDev, type Bindings } from "./env.js";
 
 export type { Bindings };
 
 type Env = { Bindings: Bindings; Variables: AuthVariables };
+
+// /time-entries の POST は category と time-entry の両方の store を必要とし、
+// そのままだと createDb() がリクエスト内で2回呼ばれる。Neon HTTPドライバなので
+// 重い接続プール生成ではないが、リクエスト単位で1つに揃える（Codexレビュー対応）。
+const dbPerRequest = new WeakMap<Context<Env>, Database>();
+function getDb(c: Context<Env>): Database {
+  const cached = dbPerRequest.get(c);
+  if (cached) return cached;
+  const db = createDb(c.env.DATABASE_URL);
+  dbPerRequest.set(c, db);
+  return db;
+}
 
 const app = new Hono<Env>().basePath("/api");
 
@@ -48,7 +62,15 @@ const routes = app
   .route(
     "/categories",
     createCategoriesRoutes(
-      (c) => createCategoryStore(createDb(c.env.DATABASE_URL)),
+      (c) => createCategoryStore(getDb(c)),
+      requireAuth<Env>((c) => createAuth(c.env).api.getSession({ headers: c.req.raw.headers })),
+    ),
+  )
+  .route(
+    "/time-entries",
+    createTimeEntriesRoutes(
+      (c) => createTimeEntryStore(getDb(c)),
+      (c) => createCategoryStore(getDb(c)),
       requireAuth<Env>((c) => createAuth(c.env).api.getSession({ headers: c.req.raw.headers })),
     ),
   );

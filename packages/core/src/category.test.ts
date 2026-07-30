@@ -1,5 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import { isValidCategoryName, isValidCategoryColor, canModifyCategory } from "./category.js";
+import {
+  isValidCategoryName,
+  isValidCategoryColor,
+  canModifyCategory,
+  canUseCategory,
+} from "./category.js";
 
 describe("isValidCategoryName", () => {
   test("通常の文字列は有効", () => {
@@ -65,5 +70,19 @@ describe("canModifyCategory", () => {
 
   test("共通カテゴリ（userId が null）は編集不可", () => {
     expect(canModifyCategory(null, "user_1")).toBe(false);
+  });
+});
+
+describe("canUseCategory", () => {
+  test("自分のカテゴリは選択可能", () => {
+    expect(canUseCategory("user_1", "user_1")).toBe(true);
+  });
+
+  test("他人のカテゴリは選択不可", () => {
+    expect(canUseCategory("user_1", "user_2")).toBe(false);
+  });
+
+  test("共通カテゴリ（userId が null）は誰でも選択可能", () => {
+    expect(canUseCategory(null, "user_1")).toBe(true);
   });
 });
