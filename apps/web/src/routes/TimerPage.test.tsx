@@ -229,6 +229,22 @@ describe("TimerPage", () => {
       expect(mutate).toHaveBeenCalledWith("entry_1");
     });
 
+    test("休憩リクエスト実行中は、休憩・終了ボタンをまとめて無効化する（多重送信防止）", () => {
+      useCurrentTimeEntryMock.mockReturnValue({
+        data: workingEntry(),
+        isPending: false,
+        error: null,
+      });
+      useStartBreakMock.mockReturnValue(mutationResult({ isPending: true }));
+
+      render(<TimerPage />);
+
+      const breakButton = screen.getByRole("button", { name: "休憩" }) as HTMLButtonElement;
+      const endButton = screen.getByRole("button", { name: "終了" }) as HTMLButtonElement;
+      expect(breakButton.disabled).toBe(true);
+      expect(endButton.disabled).toBe(true);
+    });
+
     test("乖離が10分未満なら終了ボタンで即座に終了する（モーダルを出さない）", () => {
       const mutate = mock();
       useCurrentTimeEntryMock.mockReturnValue({

@@ -25,15 +25,19 @@ export function DeviationModal({ onSubmit, onCancel }: DeviationModalProps) {
     <div
       role="dialog"
       aria-modal="true"
+      aria-labelledby="deviation-modal-heading"
       className="fixed inset-0 flex items-center justify-center bg-black/40 px-4"
     >
       <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-lg">
-        <h2 className="text-lg font-bold text-gray-900">予定時間と差がありました</h2>
+        <h2 id="deviation-modal-heading" className="text-lg font-bold text-gray-900">
+          予定時間と差がありました
+        </h2>
         <p className="mt-1 text-sm text-gray-600">集中できましたか？</p>
 
         <div className="mt-4 flex gap-2">
           <button
             type="button"
+            aria-pressed={focused === true}
             onClick={() => setFocused(true)}
             className={`min-h-11 flex-1 rounded-md border px-4 text-sm font-medium ${
               focused === true
@@ -45,6 +49,7 @@ export function DeviationModal({ onSubmit, onCancel }: DeviationModalProps) {
           </button>
           <button
             type="button"
+            aria-pressed={focused === false}
             onClick={() => setFocused(false)}
             className={`min-h-11 flex-1 rounded-md border px-4 text-sm font-medium ${
               focused === false

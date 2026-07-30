@@ -26,6 +26,25 @@ describe("DeviationModal", () => {
     expect(button.disabled).toBe(false);
   });
 
+  test("見出しとダイアログが aria-labelledby で関連付けられている（スクリーンリーダー対応）", () => {
+    render(<DeviationModal onSubmit={mock()} onCancel={mock()} />);
+
+    const dialog = screen.getByRole("dialog");
+    const heading = screen.getByText("予定時間と差がありました");
+    expect(dialog.getAttribute("aria-labelledby")).toBe(heading.id);
+  });
+
+  test("「はい」を選ぶと、はいボタンだけ aria-pressed=true になる", () => {
+    render(<DeviationModal onSubmit={mock()} onCancel={mock()} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "はい" }));
+
+    expect(screen.getByRole("button", { name: "はい" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "いいえ" }).getAttribute("aria-pressed")).toBe(
+      "false",
+    );
+  });
+
   test("focused=true・理由入力ありで終了すると、trimした理由付きでonSubmitを呼ぶ", () => {
     const onSubmit = mock();
     render(<DeviationModal onSubmit={onSubmit} onCancel={mock()} />);

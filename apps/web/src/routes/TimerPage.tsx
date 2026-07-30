@@ -145,6 +145,11 @@ function RunningTimer({ entry }: { entry: TimeEntry }) {
 
   const mutationError =
     startBreak.error ?? resumeTimeEntry.error ?? endTimeEntry.error ?? undefined;
+  // いずれかの操作が進行中は他のボタンも無効化する（Codexレビュー対応）。
+  // 個別に isPending だけを見ていると、例えば休憩リクエスト送信中に終了ボタンを
+  // 押せてしまい、サーバー側は409で弾くだけでユーザーには「押したのに終了できない」
+  // ように見えてしまう。
+  const isMutating = startBreak.isPending || resumeTimeEntry.isPending || endTimeEntry.isPending;
 
   return (
     <div className="mx-auto flex max-w-sm flex-col items-center gap-4 text-center">
@@ -161,7 +166,7 @@ function RunningTimer({ entry }: { entry: TimeEntry }) {
           <button
             type="button"
             onClick={() => startBreak.mutate(entry.id)}
-            disabled={startBreak.isPending}
+            disabled={isMutating}
             className="min-h-11 flex-1 rounded-md border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
           >
             休憩
@@ -170,7 +175,7 @@ function RunningTimer({ entry }: { entry: TimeEntry }) {
           <button
             type="button"
             onClick={() => resumeTimeEntry.mutate(entry.id)}
-            disabled={resumeTimeEntry.isPending}
+            disabled={isMutating}
             className="min-h-11 flex-1 rounded-md border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
           >
             再開
@@ -179,7 +184,7 @@ function RunningTimer({ entry }: { entry: TimeEntry }) {
         <button
           type="button"
           onClick={handleEndClick}
-          disabled={endTimeEntry.isPending}
+          disabled={isMutating}
           className="min-h-11 flex-1 rounded-md bg-gray-900 px-4 text-sm font-medium text-white hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
         >
           終了
