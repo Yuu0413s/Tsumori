@@ -47,6 +47,7 @@ export interface TimeEntryStore {
       durationMinutes: number;
       totalBreakSeconds: number;
       deviationReason: string | null;
+      deviationFocused: boolean | null;
     },
   ): Promise<TimeEntry | undefined>;
   listCompletedToday(userId: string, date: string): Promise<TimeEntryWithCategory[]>;
@@ -122,6 +123,7 @@ export function createTimeEntryStore(db: Database): TimeEntryStore {
           totalBreakSeconds: patch.totalBreakSeconds,
           breakStartedAt: null,
           deviationReason: patch.deviationReason,
+          deviationFocused: patch.deviationFocused,
           updatedAt: new Date(),
         })
         .where(and(eq(timeEntries.id, id), eq(timeEntries.status, patch.fromStatus)))

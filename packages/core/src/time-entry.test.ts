@@ -4,8 +4,11 @@ import {
   isValidTimeEntryName,
   isValidPlannedDurationMinutes,
   isValidDeviationReason,
+  isValidDeviationFocused,
   calcActualDurationMinutes,
   accumulateBreakSeconds,
+  calcElapsedSeconds,
+  isSignificantDeviation,
 } from "./time-entry.js";
 
 describe("canModifyTimeEntry", () => {
@@ -113,6 +116,29 @@ describe("isValidDeviationReason", () => {
   });
 });
 
+describe("isValidDeviationFocused", () => {
+  test("true は有効", () => {
+    expect(isValidDeviationFocused(true)).toBe(true);
+  });
+
+  test("false は有効", () => {
+    expect(isValidDeviationFocused(false)).toBe(true);
+  });
+
+  test("未指定（undefined）は有効（乖離モーダルを出さなかった場合は送られない）", () => {
+    expect(isValidDeviationFocused(undefined)).toBe(true);
+  });
+
+  test("null は無効（明示的にnullを送るのは不正入力として扱う）", () => {
+    expect(isValidDeviationFocused(null)).toBe(false);
+  });
+
+  test("真偽値以外は無効", () => {
+    expect(isValidDeviationFocused("true")).toBe(false);
+    expect(isValidDeviationFocused(1)).toBe(false);
+  });
+});
+
 describe("calcActualDurationMinutes", () => {
   test("休憩無しなら経過時間そのまま（分に切り捨て）", () => {
     const startedAt = new Date("2026-07-29T10:00:00.000Z");
@@ -156,5 +182,97 @@ describe("accumulateBreakSeconds", () => {
     const breakStartedAt = new Date("2026-07-29T10:00:00.000Z");
     const resumedAt = new Date("2026-07-29T10:00:00.900Z");
     expect(accumulateBreakSeconds(breakStartedAt, resumedAt, 0)).toBe(0);
+  });
+});
+
+describe("calcElapsedSeconds", () => {
+  const startedAt = new Date("2026-07-29T10:00:00.000Z");
+
+  test("作業中は startedAt から now までの経過秒数を返す", () => {
+    const entry = {
+      status: "working" as const,
+      startedAt,
+      breakStartedAt: null,
+      totalBreakSeconds: 0,
+    };
+    const now = new Date("2026-07-29T10:00:30.000Z");
+    expect(calcElapsedSeconds(entry, now)).toBe(30);
+  });
+
+  test("作業中は累積休憩時間を差し引く", () => {
+    const entry = {
+      status: "working" as const,
+      startedAt,
+      breakStartedAt: null,
+      totalBreakSeconds: 300,
+    };
+    const now = new Date("2026-07-29T10:10:00.000Z");
+    expect(calcElapsedSeconds(entry, now)).toBe(300); // 600 - 300
+  });
+
+  test("休憩中は breakStartedAt 時点で経過時間が止まる（now が進んでも変わらない）", () => {
+    const entry = {
+      status: "on_break" as const,
+      startedAt,
+      breakStartedAt: new Date("2026-07-29T10:05:00.000Z"),
+      totalBreakSeconds: 0,
+    };
+    expect(calcElapsedSeconds(entry, new Date("2026-07-29T10:05:00.000Z"))).toBe(300);
+    expect(calcElapsedSeconds(entry, new Date("2026-07-29T10:30:00.000Z"))).toBe(300);
+  });
+
+  test("休憩を挟んで再開後は、その時点までの累積休憩時間を差し引く", () => {
+    const entry = {
+      status: "working" as const,
+      startedAt,
+      breakStartedAt: null,
+      totalBreakSeconds: 120,
+    };
+    const now = new Date("2026-07-29T10:05:00.000Z"); // 300秒経過
+    expect(calcElapsedSeconds(entry, now)).toBe(180); // 300 - 120
+  });
+
+  test("休憩時間が経過時間を上回っても負にならない（0扱い）", () => {
+    const entry = {
+      status: "working" as const,
+      startedAt,
+      breakStartedAt: null,
+      totalBreakSeconds: 3600,
+    };
+    const now = new Date("2026-07-29T10:00:10.000Z");
+    expect(calcElapsedSeconds(entry, now)).toBe(0);
+  });
+
+  test("端数の秒は切り捨てる", () => {
+    const entry = {
+      status: "working" as const,
+      startedAt,
+      breakStartedAt: null,
+      totalBreakSeconds: 0,
+    };
+    const now = new Date("2026-07-29T10:00:00.900Z");
+    expect(calcElapsedSeconds(entry, now)).toBe(0);
+  });
+});
+
+describe("isSignificantDeviation", () => {
+  test("計画時間が未設定（null）なら常に false（比較対象が無い）", () => {
+    expect(isSignificantDeviation(null, 9999)).toBe(false);
+  });
+
+  test("実績が計画より10分以上長い場合は true（境界値ちょうど）", () => {
+    expect(isSignificantDeviation(30, 40)).toBe(true);
+  });
+
+  test("実績が計画より9分長い場合は false（境界値の1つ内側）", () => {
+    expect(isSignificantDeviation(30, 39)).toBe(false);
+  });
+
+  test("実績が計画より10分以上短い場合も true（短すぎる方向の乖離）", () => {
+    expect(isSignificantDeviation(30, 20)).toBe(true);
+  });
+
+  test("実績と計画がぴったり一致する場合は false", () => {
+    expect(isSignificantDeviation(30, 30)).toBe(false);
   });
 });
