@@ -32,13 +32,16 @@ describe("LoginPage", () => {
 
   test("ログインに失敗してもエラーを握りつぶさずコンソールに出す", async () => {
     const consoleError = spyOn(console, "error").mockImplementation(() => {});
-    const signInSocial = mock(() => Promise.reject(new Error("network error")));
-    const LoginPage = createLoginPage(signInSocial);
-    render(<LoginPage />);
+    try {
+      const signInSocial = mock(() => Promise.reject(new Error("network error")));
+      const LoginPage = createLoginPage(signInSocial);
+      render(<LoginPage />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Googleでログイン" }));
+      fireEvent.click(screen.getByRole("button", { name: "Googleでログイン" }));
 
-    await waitFor(() => expect(consoleError).toHaveBeenCalled());
-    consoleError.mockRestore();
+      await waitFor(() => expect(consoleError).toHaveBeenCalled());
+    } finally {
+      consoleError.mockRestore();
+    }
   });
 });
