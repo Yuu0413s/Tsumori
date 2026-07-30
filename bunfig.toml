@@ -1,4 +1,0 @@
-[test]
-# apps/web の DOM テストのために window/document をグローバル登録する。
-# 依存パッケージ（@happy-dom/global-registrator 等）は apps/web/node_modules 側で解決される。
-preload = ["./apps/web/test-setup/happy-dom.ts", "./apps/web/test-setup/testing-library.ts"]

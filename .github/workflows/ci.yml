@@ -57,7 +57,7 @@ jobs:
         run: bun run typecheck
 
       - name: Test
-        run: bun test
+        run: bun run test
 
       # apps/web は Vite ビルド、apps/api は wrangler の dry-run バンドル
       - name: Build
