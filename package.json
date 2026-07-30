@@ -11,7 +11,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "bun test",
+    "test": "bun test apps/api packages && bun test --preload ./apps/web/test-setup/happy-dom.ts --preload ./apps/web/test-setup/testing-library.ts apps/web",
     "build": "bun run --filter '*' build",
     "dev:web": "bun run --filter @tsumori/web dev",
     "dev:api": "bun run --filter @tsumori/api dev",
