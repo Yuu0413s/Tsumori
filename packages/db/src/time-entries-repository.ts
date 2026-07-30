@@ -16,12 +16,18 @@ import type { Database } from "./index.js";
  */
 export class ActiveTimeEntryConflictError extends Error {}
 
-function isUniqueViolation(error: unknown): boolean {
+/**
+ * 「進行中は1件のみ」の部分ユニークインデックス違反だけを見分ける。
+ * エラーコード（23505 = unique_violation）だけで判定すると、将来別のユニーク制約
+ * （例: idの衝突）が絡んだ場合まで誤って「進行中の記録がある」に変換してしまうため、
+ * 対象のインデックス名まで確認する（Codexレビュー対応）。
+ */
+function isActiveEntryConflict(error: unknown): boolean {
   return (
     typeof error === "object" &&
     error !== null &&
-    "code" in error &&
-    (error as { code?: unknown }).code === "23505"
+    (error as { code?: unknown }).code === "23505" &&
+    (error as { constraint?: unknown }).constraint === "time_entries_one_active_per_user_idx"
   );
 }
 
@@ -69,7 +75,7 @@ export function createTimeEntryStore(db: Database): TimeEntryStore {
         if (!created) throw new Error("作業記録の作成に失敗しました");
         return created;
       } catch (error) {
-        if (isUniqueViolation(error)) {
+        if (isActiveEntryConflict(error)) {
           throw new ActiveTimeEntryConflictError("既に進行中の記録があります");
         }
         throw error;

@@ -283,9 +283,11 @@ export const categoriesRelations = relations(categories, ({ one, many }) => ({
 }));
 
 export const timeEntriesRelations = relations(timeEntries, ({ one }) => ({
-  user: one(users, {
+  // userId カラム自体は better-auth の user を参照する（Issue #9）。
+  // relation 側もそれに合わせる（Codexレビュー対応：ここだけ旧 users のままだった）。
+  user: one(user, {
     fields: [timeEntries.userId],
-    references: [users.id],
+    references: [user.id],
   }),
   category: one(categories, {
     fields: [timeEntries.categoryId],
