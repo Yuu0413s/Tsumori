@@ -46,6 +46,16 @@ export function isValidDeviationReason(reason: unknown): reason is string | unde
 }
 
 /**
+ * 「集中できたか」として有効か判定する。乖離モーダルを出さなかった場合は
+ * 送られないため undefined は許容するが、null は不正入力として弾く
+ * （reason と同様の考え方）。
+ */
+export function isValidDeviationFocused(focused: unknown): focused is boolean | undefined {
+  if (focused === undefined) return true;
+  return typeof focused === "boolean";
+}
+
+/**
  * 実績時間（分）を計算する。経過時間から累積休憩時間を差し引く。
  * 休憩時間が経過時間を上回ることは通常無いが、念のため0未満にはしない。
  */
@@ -69,4 +79,38 @@ export function accumulateBreakSeconds(
 ): number {
   const breakSeconds = Math.max(0, (resumedAt.getTime() - breakStartedAt.getTime()) / 1000);
   return priorTotalBreakSeconds + Math.floor(breakSeconds);
+}
+
+export type ElapsedTimeEntry = {
+  status: "working" | "on_break";
+  startedAt: Date;
+  breakStartedAt: Date | null;
+  totalBreakSeconds: number;
+};
+
+/**
+ * 画面表示用の経過秒数を計算する。作業中は now まで進み続けるが、
+ * 休憩中は breakStartedAt 時点で止める（技術メモ: 休憩中は表示を止める）。
+ * setInterval のカウント積み上げではなく、都度 now との差分を取り直す設計
+ * （タブがバックグラウンドに回っても後から正しい値に復帰できるようにするため）。
+ */
+export function calcElapsedSeconds(entry: ElapsedTimeEntry, now: Date): number {
+  const referenceTime =
+    entry.status === "on_break" && entry.breakStartedAt !== null ? entry.breakStartedAt : now;
+  const elapsedSeconds = (referenceTime.getTime() - entry.startedAt.getTime()) / 1000;
+  return Math.floor(Math.max(0, elapsedSeconds - entry.totalBreakSeconds));
+}
+
+const SIGNIFICANT_DEVIATION_MINUTES = 10;
+
+/**
+ * 計画時間と実績時間の乖離が、終了前に確認を挟むべき大きさ（10分以上）か判定する。
+ * plannedDurationMinutes が未設定（null）の場合は比較対象が無いため常に false。
+ */
+export function isSignificantDeviation(
+  plannedDurationMinutes: number | null,
+  actualMinutes: number,
+): boolean {
+  if (plannedDurationMinutes === null) return false;
+  return Math.abs(actualMinutes - plannedDurationMinutes) >= SIGNIFICANT_DEVIATION_MINUTES;
 }

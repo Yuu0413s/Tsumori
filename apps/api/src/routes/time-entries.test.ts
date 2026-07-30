@@ -138,6 +138,7 @@ function createFakeStore(
         durationMinutes: patch.durationMinutes,
         totalBreakSeconds: patch.totalBreakSeconds,
         deviationReason: patch.deviationReason,
+        deviationFocused: patch.deviationFocused,
       };
       rows.set(id, updated);
       return updated;
@@ -624,6 +625,53 @@ describe("PATCH /:id/end", () => {
     const res = await app.request("/entry_1/end", { method: "PATCH" });
 
     expect(res.status).toBe(200);
+  });
+
+  test("「集中できたか」（focused）を受け取れる", async () => {
+    const { app } = buildApp(
+      [timeEntry({ id: "entry_1", status: "working" })],
+      [category()],
+      OWNER_ID,
+    );
+
+    const res = await app.request("/entry_1/end", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ focused: false, reason: "会議が延びた" }),
+    });
+    const body = (await res.json()) as TimeEntry;
+
+    expect(body.deviationFocused).toBe(false);
+  });
+
+  test("focusedを省略しても終了できる（乖離モーダルを出さなかった場合は送られない）", async () => {
+    const { app } = buildApp(
+      [timeEntry({ id: "entry_1", status: "working" })],
+      [category()],
+      OWNER_ID,
+    );
+
+    const res = await app.request("/entry_1/end", { method: "PATCH" });
+    const body = (await res.json()) as TimeEntry;
+
+    expect(res.status).toBe(200);
+    expect(body.deviationFocused).toBeNull();
+  });
+
+  test("focusedが真偽値以外なら400", async () => {
+    const { app } = buildApp(
+      [timeEntry({ id: "entry_1", status: "working" })],
+      [category()],
+      OWNER_ID,
+    );
+
+    const res = await app.request("/entry_1/end", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ focused: "yes" }),
+    });
+
+    expect(res.status).toBe(400);
   });
 
   test("reasonが文字列以外なら400", async () => {

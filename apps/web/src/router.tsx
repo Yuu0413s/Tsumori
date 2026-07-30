@@ -4,7 +4,7 @@ import { RequireGuest } from "./components/RequireGuest.js";
 import { Layout } from "./components/Layout.js";
 import { RouteErrorBoundary } from "./components/RouteErrorBoundary.js";
 import { LoginPage } from "./routes/LoginPage.js";
-import { DashboardPage } from "./routes/DashboardPage.js";
+import { TimerPage } from "./routes/TimerPage.js";
 
 export const router = createBrowserRouter([
   {
@@ -18,7 +18,7 @@ export const router = createBrowserRouter([
     children: [
       {
         element: <Layout />,
-        children: [{ path: "/", element: <DashboardPage /> }],
+        children: [{ path: "/", element: <TimerPage /> }],
       },
     ],
   },

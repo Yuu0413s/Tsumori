@@ -6,6 +6,7 @@ import {
   isValidTimeEntryName,
   isValidPlannedDurationMinutes,
   isValidDeviationReason,
+  isValidDeviationFocused,
   canModifyTimeEntry,
   canUseCategory,
   calcActualDurationMinutes,
@@ -162,9 +163,12 @@ export function createTimeEntriesRoutes(
       }
 
       const body = readBody(await c.req.json().catch(() => null));
-      const { reason } = body;
+      const { reason, focused } = body;
       if (!isValidDeviationReason(reason)) {
         return c.json({ error: "reason は500文字以内の文字列で指定してください" }, 400);
+      }
+      if (!isValidDeviationFocused(focused)) {
+        return c.json({ error: "focused は真偽値で指定してください" }, 400);
       }
 
       const endedAt = now();
@@ -186,6 +190,7 @@ export function createTimeEntriesRoutes(
         durationMinutes,
         totalBreakSeconds,
         deviationReason: reason ?? null,
+        deviationFocused: focused ?? null,
       });
       // findById〜ここまでの間に別リクエストが状態を変えていた場合、
       // fromStatusが一致せず undefined になる（durationMinutes計算の前提が崩れるため）。

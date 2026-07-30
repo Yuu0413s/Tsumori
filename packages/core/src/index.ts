@@ -12,8 +12,12 @@ export {
   isValidTimeEntryName,
   isValidPlannedDurationMinutes,
   isValidDeviationReason,
+  isValidDeviationFocused,
   calcActualDurationMinutes,
   accumulateBreakSeconds,
+  calcElapsedSeconds,
+  isSignificantDeviation,
+  type ElapsedTimeEntry,
 } from "./time-entry.js";
 export {
   isValidBreakExtendsDeadline,
