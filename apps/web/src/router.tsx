@@ -5,6 +5,7 @@ import { Layout } from "./components/Layout.js";
 import { RouteErrorBoundary } from "./components/RouteErrorBoundary.js";
 import { LoginPage } from "./routes/LoginPage.js";
 import { TimerPage } from "./routes/TimerPage.js";
+import { SummaryPage } from "./routes/SummaryPage.js";
 
 export const router = createBrowserRouter([
   {
@@ -18,7 +19,10 @@ export const router = createBrowserRouter([
     children: [
       {
         element: <Layout />,
-        children: [{ path: "/", element: <TimerPage /> }],
+        children: [
+          { path: "/", element: <TimerPage /> },
+          { path: "/summary", element: <SummaryPage /> },
+        ],
       },
     ],
   },

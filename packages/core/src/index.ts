@@ -1,4 +1,4 @@
-export { formatDuration, parseDurationMinutes } from "./duration.js";
+export { formatDuration, parseDurationMinutes, formatMinutes } from "./duration.js";
 export { toUtcDateString } from "./date.js";
 export { calcDeadline, shouldFireAlarm, type AlarmEntry } from "./alarm.js";
 export {
@@ -24,3 +24,8 @@ export {
   isValidSoundEnabled,
   isValidPreAlarmMinutes,
 } from "./settings.js";
+export {
+  summarizeByCategory,
+  type CategorySummaryEntry,
+  type SummarizableEntry,
+} from "./summary.js";
