@@ -9,7 +9,11 @@ export function LoginPage() {
       </p>
       <button
         type="button"
-        onClick={() => void signIn.social({ provider: "google", callbackURL: "/" })}
+        onClick={() =>
+          void signIn
+            .social({ provider: "google", callbackURL: "/" })
+            .catch((error: unknown) => console.error(error))
+        }
         className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700"
       >
         Googleでログイン

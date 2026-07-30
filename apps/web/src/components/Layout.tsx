@@ -8,7 +8,7 @@ export function Layout() {
         <span className="font-bold text-gray-900">Tsumori</span>
         <button
           type="button"
-          onClick={() => void signOut()}
+          onClick={() => void signOut().catch((error: unknown) => console.error(error))}
           className="text-sm text-gray-500 hover:text-gray-700"
         >
           ログアウト
