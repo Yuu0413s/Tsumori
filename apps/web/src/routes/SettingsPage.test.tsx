@@ -207,7 +207,37 @@ describe("SettingsPage", () => {
       fireEvent.change(screen.getByLabelText("仕事の名前"), { target: { value: "作業" } });
       fireEvent.click(screen.getByRole("button", { name: "保存" }));
 
-      expect(mutate).toHaveBeenCalledWith({ id: "cat_1", name: "作業", color: "#3b82f6" });
+      expect(mutate.mock.calls[0]?.[0]).toEqual({ id: "cat_1", name: "作業", color: "#3b82f6" });
+    });
+
+    test("保存が成功すると編集画面を閉じる（onSuccessコールバック）", () => {
+      // 実際の useMutation は成功時に options.onSuccess を呼ぶため、
+      // ここでも同じ挙動を模倣して SettingsPage 側の反応を検証する。
+      const mutate = mock((_vars: unknown, options: { onSuccess: () => void }) =>
+        options.onSuccess(),
+      );
+      useUpdateCategoryMock.mockReturnValue(mutationResult({ mutate }));
+
+      render(<SettingsPage />);
+      fireEvent.click(screen.getByRole("button", { name: "編集" }));
+      fireEvent.click(screen.getByRole("button", { name: "保存" }));
+
+      expect(screen.queryByLabelText("仕事の名前")).toBeNull();
+      expect(screen.getByRole("button", { name: "編集" })).toBeTruthy();
+    });
+
+    test("保存が失敗しても編集画面を閉じず、入力内容を保持する", () => {
+      // mutate が onSuccess を呼ばない（＝失敗した）ケースを模倣する。
+      const mutate = mock();
+      useUpdateCategoryMock.mockReturnValue(mutationResult({ mutate }));
+
+      render(<SettingsPage />);
+      fireEvent.click(screen.getByRole("button", { name: "編集" }));
+      fireEvent.change(screen.getByLabelText("仕事の名前"), { target: { value: "作業" } });
+      fireEvent.click(screen.getByRole("button", { name: "保存" }));
+
+      const input = screen.getByLabelText("仕事の名前") as HTMLInputElement;
+      expect(input.value).toBe("作業");
     });
 
     test("編集をキャンセルすると更新を呼ばず表示に戻る", () => {
@@ -243,7 +273,33 @@ describe("SettingsPage", () => {
       });
       fireEvent.click(screen.getByRole("button", { name: "追加" }));
 
-      expect(mutate).toHaveBeenCalledWith({ name: "趣味", color: "#3b82f6" });
+      expect(mutate.mock.calls[0]?.[0]).toEqual({ name: "趣味", color: "#3b82f6" });
+    });
+
+    test("追加が成功すると入力欄をクリアする（onSuccessコールバック）", () => {
+      const mutate = mock((_vars: unknown, options: { onSuccess: () => void }) =>
+        options.onSuccess(),
+      );
+      useCreateCategoryMock.mockReturnValue(mutationResult({ mutate }));
+
+      render(<SettingsPage />);
+      const input = screen.getByLabelText("新しいカテゴリ名") as HTMLInputElement;
+      fireEvent.change(input, { target: { value: "趣味" } });
+      fireEvent.click(screen.getByRole("button", { name: "追加" }));
+
+      expect(input.value).toBe("");
+    });
+
+    test("追加が失敗しても入力欄をクリアしない", () => {
+      const mutate = mock();
+      useCreateCategoryMock.mockReturnValue(mutationResult({ mutate }));
+
+      render(<SettingsPage />);
+      const input = screen.getByLabelText("新しいカテゴリ名") as HTMLInputElement;
+      fireEvent.change(input, { target: { value: "趣味" } });
+      fireEvent.click(screen.getByRole("button", { name: "追加" }));
+
+      expect(input.value).toBe("趣味");
     });
 
     test("カテゴリ名が空では追加ボタンが無効", () => {

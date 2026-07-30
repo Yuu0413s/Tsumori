@@ -208,13 +208,22 @@ function CategorySection({
             // （apps/api/src/routes/categories.ts の canModifyCategory と同じ判定）。
             canModify={canModifyCategory(category.userId, currentUserId)}
             isMutating={isMutating}
-            onUpdate={(patch) => updateCategory.mutate({ id: category.id, ...patch })}
+            // 失敗時（例: 名前が100文字超でサーバーが400を返す）にも編集画面を
+            // 閉じてしまうと、ユーザーが入力し直した内容が消えてしまう。
+            // 成功したときだけ呼ばれる onSuccess を渡し、閉じるかどうかは
+            // CategoryRow 側の責務にする。
+            onUpdate={(patch, onSuccess) =>
+              updateCategory.mutate({ id: category.id, ...patch }, { onSuccess })
+            }
             onHide={() => hideCategory.mutate(category.id)}
           />
         ))}
       </ul>
 
-      <AddCategoryForm isMutating={isMutating} onCreate={(input) => createCategory.mutate(input)} />
+      <AddCategoryForm
+        isMutating={isMutating}
+        onCreate={(input, onSuccess) => createCategory.mutate(input, { onSuccess })}
+      />
     </section>
   );
 }
@@ -229,7 +238,7 @@ function CategoryRow({
   category: Category;
   canModify: boolean;
   isMutating: boolean;
-  onUpdate: (patch: { name?: string; color?: string }) => void;
+  onUpdate: (patch: { name?: string; color?: string }, onSuccess: () => void) => void;
   onHide: () => void;
 }) {
   const [isEditing, setIsEditing] = useState(false);
@@ -252,6 +261,7 @@ function CategoryRow({
           value={name}
           onChange={(e) => setName(e.target.value)}
           disabled={isMutating}
+          maxLength={100}
           aria-label={`${category.name}の名前`}
           className="min-h-11 min-w-0 flex-1 rounded-md border border-gray-300 px-3 text-base text-gray-900"
         />
@@ -259,8 +269,10 @@ function CategoryRow({
           type="button"
           disabled={isMutating || name.trim() === ""}
           onClick={() => {
-            onUpdate({ name: name.trim(), color });
-            setIsEditing(false);
+            // 保存の成否に関わらず即座に編集画面を閉じると、失敗時（サーバー側の
+            // バリデーションエラー等）に入力内容ごと消えてしまう。成功したときだけ
+            // 閉じるようにする（キャンセル操作以外で入力が消えるのを防ぐ）。
+            onUpdate({ name: name.trim(), color }, () => setIsEditing(false));
           }}
           className="min-h-11 shrink-0 rounded-md bg-gray-900 px-3 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
         >
@@ -320,7 +332,7 @@ function AddCategoryForm({
   onCreate,
 }: {
   isMutating: boolean;
-  onCreate: (input: { name: string; color: string }) => void;
+  onCreate: (input: { name: string; color: string }, onSuccess: () => void) => void;
 }) {
   const DEFAULT_COLOR = "#3b82f6";
   const [name, setName] = useState("");
@@ -331,9 +343,13 @@ function AddCategoryForm({
       onSubmit={(e) => {
         e.preventDefault();
         if (name.trim() === "" || isMutating) return;
-        onCreate({ name: name.trim(), color });
-        setName("");
-        setColor(DEFAULT_COLOR);
+        // 追加の成否に関わらず即座にフォームをクリアすると、失敗時
+        // （名前が100文字超でサーバーが400を返す等）に入力内容が消えてしまう。
+        // 成功したときだけクリアする。
+        onCreate({ name: name.trim(), color }, () => {
+          setName("");
+          setColor(DEFAULT_COLOR);
+        });
       }}
       className="flex items-center gap-2"
     >
@@ -350,6 +366,7 @@ function AddCategoryForm({
         value={name}
         onChange={(e) => setName(e.target.value)}
         disabled={isMutating}
+        maxLength={100}
         placeholder="新しいカテゴリ名"
         aria-label="新しいカテゴリ名"
         className="min-h-11 min-w-0 flex-1 rounded-md border border-gray-300 px-3 text-base text-gray-900"
