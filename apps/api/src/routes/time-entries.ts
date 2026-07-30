@@ -64,7 +64,7 @@ export function createTimeEntriesRoutes(
         return c.json({ error: "name は1〜200文字の文字列で指定してください" }, 400);
       }
       if (!isValidPlannedDurationMinutes(plannedDurationMinutes)) {
-        return c.json({ error: "plannedDurationMinutes は0以上の整数で指定してください" }, 400);
+        return c.json({ error: "plannedDurationMinutes は0〜1440の整数で指定してください" }, 400);
       }
 
       const categoryStore = getCategoryStore(c);
