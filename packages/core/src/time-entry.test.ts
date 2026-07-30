@@ -221,6 +221,20 @@ describe("calcElapsedSeconds", () => {
     expect(calcElapsedSeconds(entry, new Date("2026-07-29T10:30:00.000Z"))).toBe(300);
   });
 
+  test("on_break なのに breakStartedAt が未設定（本来あり得ない不整合値）なら working 扱いで now まで進める", () => {
+    // startBreak は status と breakStartedAt を必ず同時にセットするため実運用では
+    // 起きないが、型上は breakStartedAt: Date | null を許容している。
+    // ここでは意図した（フォールバックする）挙動であることを固定しておく。
+    const entry = {
+      status: "on_break" as const,
+      startedAt,
+      breakStartedAt: null,
+      totalBreakSeconds: 0,
+    };
+    const now = new Date("2026-07-29T10:00:30.000Z");
+    expect(calcElapsedSeconds(entry, now)).toBe(30);
+  });
+
   test("休憩を挟んで再開後は、その時点までの累積休憩時間を差し引く", () => {
     const entry = {
       status: "working" as const,
