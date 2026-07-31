@@ -7,6 +7,7 @@ import { LoginPage } from "./routes/LoginPage.js";
 import { TimerPage } from "./routes/TimerPage.js";
 import { SummaryPage } from "./routes/SummaryPage.js";
 import { SettingsPage } from "./routes/SettingsPage.js";
+import { NotFoundPage } from "./routes/NotFoundPage.js";
 
 export const router = createBrowserRouter([
   {
@@ -28,4 +29,6 @@ export const router = createBrowserRouter([
       },
     ],
   },
+  // 上記いずれにもマッチしないパス（Issue #41）。認証状態にかかわらず表示する。
+  { path: "*", element: <NotFoundPage /> },
 ]);

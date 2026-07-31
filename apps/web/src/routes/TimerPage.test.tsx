@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 import { fireEvent, render, screen } from "@testing-library/react";
+import { createMemoryRouter, RouterProvider } from "react-router";
 
 const useCurrentTimeEntryMock = mock();
 const useCategoriesMock = mock();
@@ -162,6 +163,25 @@ describe("TimerPage", () => {
         name: undefined,
         plannedDurationMinutes: undefined,
       });
+    });
+
+    test("カテゴリが0件のときは開始できない旨と設定画面への導線を表示する", () => {
+      useCategoriesMock.mockReturnValue({ data: [], isPending: false, error: null });
+      const router = createMemoryRouter(
+        [
+          { path: "/", element: <TimerPage /> },
+          { path: "/settings", element: <div>設定画面</div> },
+        ],
+        { initialEntries: ["/"] },
+      );
+
+      render(<RouterProvider router={router} />);
+
+      expect(
+        screen.getByText("まだカテゴリがありません。開始するには先にカテゴリを作成してください。"),
+      ).toBeTruthy();
+      const link = screen.getByRole("link", { name: "設定でカテゴリを作成する" });
+      expect(link.getAttribute("href")).toBe("/settings");
     });
 
     test("開始リクエスト実行中は、submitイベントが来てもstartTimeEntryを呼ばない（多重送信防止）", () => {
