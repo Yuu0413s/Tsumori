@@ -345,23 +345,7 @@ describe("findAccountIdConflicts", () => {
 });
 
 describe("planAccidentalUserCleanup", () => {
-  test("emailConflicts の existingUserId を削除対象にする", () => {
-    const result = planAccidentalUserCleanup(
-      [{ legacyId: "user_1", email: "taro@example.com", existingUserId: "accidental-id" }],
-      [],
-    );
-    expect(result).toEqual({ userIdsToDelete: ["accidental-id"] });
-  });
-
-  test("accountIdConflicts の existingUserId を削除対象にする", () => {
-    const result = planAccidentalUserCleanup(
-      [],
-      [{ legacyUserId: "user_1", accountId: "sub-1", existingUserId: "accidental-id" }],
-    );
-    expect(result).toEqual({ userIdsToDelete: ["accidental-id"] });
-  });
-
-  test("同じ existingUserId が両方の衝突で見つかっても重複させない", () => {
+  test("同じ legacyId・同じ existingUserId で email衝突とaccountId衝突の両方が一致すれば削除対象にする（実際の事故の形）", () => {
     const result = planAccidentalUserCleanup(
       [{ legacyId: "user_1", email: "taro@example.com", existingUserId: "accidental-id" }],
       [{ legacyUserId: "user_1", accountId: "sub-1", existingUserId: "accidental-id" }],
@@ -369,10 +353,48 @@ describe("planAccidentalUserCleanup", () => {
     expect(result).toEqual({ userIdsToDelete: ["accidental-id"] });
   });
 
-  test("異なる existingUserId は両方とも削除対象にする（複数人が事故に遭ったケース）", () => {
+  test("emailConflicts にしか無い衝突は削除対象にしない（無関係なemail重複を誤って削除しないため）", () => {
+    const result = planAccidentalUserCleanup(
+      [{ legacyId: "user_1", email: "taro@example.com", existingUserId: "accidental-id" }],
+      [],
+    );
+    expect(result).toEqual({ userIdsToDelete: [] });
+  });
+
+  test("accountIdConflicts にしか無い衝突は削除対象にしない", () => {
+    const result = planAccidentalUserCleanup(
+      [],
+      [{ legacyUserId: "user_1", accountId: "sub-1", existingUserId: "accidental-id" }],
+    );
+    expect(result).toEqual({ userIdsToDelete: [] });
+  });
+
+  test("existingUserId は同じでも legacyId が食い違う場合は削除対象にしない", () => {
+    const result = planAccidentalUserCleanup(
+      [{ legacyId: "user_1", email: "taro@example.com", existingUserId: "accidental-id" }],
+      [{ legacyUserId: "user_2", accountId: "sub-1", existingUserId: "accidental-id" }],
+    );
+    expect(result).toEqual({ userIdsToDelete: [] });
+  });
+
+  test("legacyId は同じでも existingUserId が食い違う場合は削除対象にしない", () => {
     const result = planAccidentalUserCleanup(
       [{ legacyId: "user_1", email: "taro@example.com", existingUserId: "accidental-id-1" }],
-      [{ legacyUserId: "user_2", accountId: "sub-2", existingUserId: "accidental-id-2" }],
+      [{ legacyUserId: "user_1", accountId: "sub-1", existingUserId: "accidental-id-2" }],
+    );
+    expect(result).toEqual({ userIdsToDelete: [] });
+  });
+
+  test("複数人が事故に遭ったケースでも、両方一致した分だけ重複無く削除対象にする", () => {
+    const result = planAccidentalUserCleanup(
+      [
+        { legacyId: "user_1", email: "taro@example.com", existingUserId: "accidental-id-1" },
+        { legacyId: "user_2", email: "hanako@example.com", existingUserId: "accidental-id-2" },
+      ],
+      [
+        { legacyUserId: "user_1", accountId: "sub-1", existingUserId: "accidental-id-1" },
+        { legacyUserId: "user_2", accountId: "sub-2", existingUserId: "accidental-id-2" },
+      ],
     );
     expect(result.userIdsToDelete.sort()).toEqual(["accidental-id-1", "accidental-id-2"]);
   });

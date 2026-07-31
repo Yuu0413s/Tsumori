@@ -184,19 +184,30 @@ export interface AccidentalUserCleanupPlan {
 /**
  * Issue #42: 移行（--execute）より前に本人が Google ログインしてしまうと、
  * better-auth がメール一致でリンクせず、ランダムな新規 id で `user` を
- * 作ってしまう（実際に発生した事故）。findEmailConflicts /
- * findAccountIdConflicts が検出した「事故で作られた側」の user.id をまとめ、
- * 削除対象として返す。`user` 行を削除すれば `account`/`session` は
- * onDelete: cascade で追従して消える（schema.ts 参照）ため、ここでは
- * user.id の集合だけを扱えばよい。
+ * 作ってしまう（実際に発生した事故）。この事故が起きると、同じ legacy
+ * ユーザーに対して email 衝突と Google accountId 衝突が「同じ既存
+ * user.id」を指す形で必ず両方検出される。
+ *
+ * 片方の衝突だけで削除対象と判定すると、この事故とは無関係の email 重複や
+ * account 紐付け不整合まで「事故ユーザー」とみなして `user` 行を削除しかね
+ * ない（Codexレビュー対応）。そのため、同じ legacyId・同じ existingUserId
+ * で両方の衝突が一致したものだけを削除対象にする。
  */
 export function planAccidentalUserCleanup(
   emailConflicts: EmailConflict[],
   accountIdConflicts: AccountIdConflict[],
 ): AccidentalUserCleanupPlan {
   const userIds = new Set<string>();
-  for (const c of emailConflicts) userIds.add(c.existingUserId);
-  for (const c of accountIdConflicts) userIds.add(c.existingUserId);
+  for (const emailConflict of emailConflicts) {
+    const hasMatchingAccountConflict = accountIdConflicts.some(
+      (accountConflict) =>
+        accountConflict.legacyUserId === emailConflict.legacyId &&
+        accountConflict.existingUserId === emailConflict.existingUserId,
+    );
+    if (hasMatchingAccountConflict) {
+      userIds.add(emailConflict.existingUserId);
+    }
+  }
   return { userIdsToDelete: [...userIds] };
 }
 
