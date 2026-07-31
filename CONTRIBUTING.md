@@ -137,11 +137,11 @@ bunx wrangler secret put DATABASE_URL
 Neon は `dev` / `production` の2ブランチで DB を分離している。設定は3箇所にあり、
 それぞれ読む主体が異なる（#40 で検証済み）。
 
-| ファイル                    | 読む主体                                             | 向き先       |
-| ---------------------------- | ----------------------------------------------------- | ------------ |
-| `.env.local`（ルート）       | ローカルの Node.js ツール（drizzle-kit、移行スクリプト等） | `dev`        |
-| `apps/api/.dev.vars`         | `wrangler dev`（ローカルでの Workers 実行）            | `dev`        |
-| `wrangler secret`（`bunx wrangler secret put`） | デプロイ済みの本番 Worker             | `production` |
+| ファイル                                        | 読む主体                                                   | 向き先       |
+| ----------------------------------------------- | ---------------------------------------------------------- | ------------ |
+| `.env.local`（ルート）                          | ローカルの Node.js ツール（drizzle-kit、移行スクリプト等） | `dev`        |
+| `apps/api/.dev.vars`                            | `wrangler dev`（ローカルでの Workers 実行）                | `dev`        |
+| `wrangler secret`（`bunx wrangler secret put`） | デプロイ済みの本番 Worker                                  | `production` |
 
 ⚠️ wrangler は `.env` / `.env.local` を読まない。ローカルのシークレットは必ず `.dev.vars` に書く。
 ⚠️ `wrangler dev --remote` を使うと `wrangler secret`（= production）を参照してしまう。
