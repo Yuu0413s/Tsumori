@@ -176,3 +176,51 @@ export function findAccountIdConflicts(
       : [];
   });
 }
+
+export interface AccidentalUserCleanupPlan {
+  userIdsToDelete: string[];
+}
+
+/**
+ * Issue #42: 移行（--execute）より前に本人が Google ログインしてしまうと、
+ * better-auth がメール一致でリンクせず、ランダムな新規 id で `user` を
+ * 作ってしまう（実際に発生した事故）。この事故が起きると、同じ legacy
+ * ユーザーに対して email 衝突と Google accountId 衝突が「同じ既存
+ * user.id」を指す形で必ず両方検出される。
+ *
+ * 片方の衝突だけで削除対象と判定すると、この事故とは無関係の email 重複や
+ * account 紐付け不整合まで「事故ユーザー」とみなして `user` 行を削除しかね
+ * ない（Codexレビュー対応）。そのため、同じ legacyId・同じ existingUserId
+ * で両方の衝突が一致したものだけを削除対象にする。
+ */
+export function planAccidentalUserCleanup(
+  emailConflicts: EmailConflict[],
+  accountIdConflicts: AccountIdConflict[],
+): AccidentalUserCleanupPlan {
+  const userIds = new Set<string>();
+  for (const emailConflict of emailConflicts) {
+    const hasMatchingAccountConflict = accountIdConflicts.some(
+      (accountConflict) =>
+        accountConflict.legacyUserId === emailConflict.legacyId &&
+        accountConflict.existingUserId === emailConflict.existingUserId,
+    );
+    if (hasMatchingAccountConflict) {
+      userIds.add(emailConflict.existingUserId);
+    }
+  }
+  return { userIdsToDelete: [...userIds] };
+}
+
+/**
+ * `user` の削除は `categories`/`time_entries`/`push_subscriptions`/`user_settings`
+ * にも onDelete: cascade で波及する（schema.ts 参照）。事故で作られた id を
+ * 本人が実際に使ってしまっていた場合、その間に作られたデータまで
+ * 削除で消えてしまうため、削除対象のうち実データが存在するものは
+ * 安全側に倒して締め出す（呼び出し側はこれが空でない場合、削除を中止すること）。
+ */
+export function findProtectedCleanupTargets(
+  userIdsToDelete: string[],
+  userIdsWithAppData: Set<string>,
+): string[] {
+  return userIdsToDelete.filter((id) => userIdsWithAppData.has(id));
+}

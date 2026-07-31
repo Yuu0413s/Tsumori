@@ -13,6 +13,7 @@
     "migrate": "drizzle-kit migrate",
     "studio": "drizzle-kit studio",
     "migrate-legacy-auth": "bun run scripts/migrate-legacy-auth.ts",
+    "repair-premigration-login": "bun run scripts/repair-premigration-login.ts",
     "build": "echo 'no build step (TS source is consumed directly)'"
   },
   "dependencies": {
