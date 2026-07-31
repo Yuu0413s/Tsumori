@@ -11,6 +11,7 @@ import {
   findEmailConflicts,
   findAccountIdConflicts,
   planAccidentalUserCleanup,
+  findProtectedCleanupTargets,
 } from "./migrate-legacy-auth.js";
 
 const NOW = new Date("2026-07-29T00:00:00.000Z");
@@ -379,5 +380,25 @@ describe("planAccidentalUserCleanup", () => {
   test("衝突が無ければ削除対象は0件", () => {
     const result = planAccidentalUserCleanup([], []);
     expect(result).toEqual({ userIdsToDelete: [] });
+  });
+});
+
+describe("findProtectedCleanupTargets", () => {
+  test("実データを持つ削除対象idを返す（誤って本人の作業記録等を消さないためのガード）", () => {
+    const result = findProtectedCleanupTargets(
+      ["accidental-id-1", "accidental-id-2"],
+      new Set(["accidental-id-1"]),
+    );
+    expect(result).toEqual(["accidental-id-1"]);
+  });
+
+  test("実データが無ければ空配列（削除して問題ないと判断できる）", () => {
+    const result = findProtectedCleanupTargets(["accidental-id-1"], new Set());
+    expect(result).toEqual([]);
+  });
+
+  test("削除対象が空なら結果も空", () => {
+    const result = findProtectedCleanupTargets([], new Set(["accidental-id-1"]));
+    expect(result).toEqual([]);
   });
 });

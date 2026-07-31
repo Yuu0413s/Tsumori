@@ -199,3 +199,17 @@ export function planAccidentalUserCleanup(
   for (const c of accountIdConflicts) userIds.add(c.existingUserId);
   return { userIdsToDelete: [...userIds] };
 }
+
+/**
+ * `user` の削除は `categories`/`time_entries`/`push_subscriptions`/`user_settings`
+ * にも onDelete: cascade で波及する（schema.ts 参照）。事故で作られた id を
+ * 本人が実際に使ってしまっていた場合、その間に作られたデータまで
+ * 削除で消えてしまうため、削除対象のうち実データが存在するものは
+ * 安全側に倒して締め出す（呼び出し側はこれが空でない場合、削除を中止すること）。
+ */
+export function findProtectedCleanupTargets(
+  userIdsToDelete: string[],
+  userIdsWithAppData: Set<string>,
+): string[] {
+  return userIdsToDelete.filter((id) => userIdsWithAppData.has(id));
+}

@@ -1,11 +1,21 @@
 import { eq, inArray } from "drizzle-orm";
 import { createDb } from "../src/index.js";
-import { users, accounts, user, account } from "../src/schema.js";
+import {
+  users,
+  accounts,
+  user,
+  account,
+  categories,
+  timeEntries,
+  pushSubscriptions,
+  userSettings,
+} from "../src/schema.js";
 import {
   planMigration,
   findEmailConflicts,
   findAccountIdConflicts,
   planAccidentalUserCleanup,
+  findProtectedCleanupTargets,
 } from "../src/migrate-legacy-auth.js";
 
 // Issue #42: migrate-legacy-auth.ts --execute より前に本人が Google ログイン
@@ -19,6 +29,12 @@ import {
 // 削除後に migrate-legacy-auth.ts --execute を実行すれば、旧 users.id を
 // 引き継いだ形で正しく移行できる。対象者は better-auth のセッションが
 // 失効するため、再ログインが必要になる。
+//
+// 注意：`user` の削除は categories/time_entries/push_subscriptions/
+// user_settings にも cascade する（schema.ts 参照）。事故で作られた id を
+// 本人が実際に使ってしまっていた場合、その間に作られたデータまで
+// 削除で消えてしまうため、実データが見つかった場合は削除せず中止する
+// （findProtectedCleanupTargets を参照）。
 //
 // 既定は dry-run（書き込みなし・対象一覧のプレビューのみ）。
 //   bun run scripts/repair-premigration-login.ts           # dry-run
@@ -67,6 +83,48 @@ async function main(databaseUrl: string) {
     console.log(
       `  accountId衝突: accountId=${c.accountId} legacy accounts.userId=${c.legacyUserId} → 削除対象 user.id=${c.existingUserId}`,
     );
+  }
+
+  // 削除対象の id が、事故発生後に実際にアプリで使われて実データを
+  // 持ってしまっていないかを確認する。`user` の削除は categories/
+  // time_entries/push_subscriptions/user_settings にも cascade するため、
+  // ここを確認せずに削除すると本人の実データを静かに失う（Codexレビュー対応）。
+  const [categoryRows, timeEntryRows, pushSubRows, userSettingsRows] = await Promise.all([
+    db
+      .select({ userId: categories.userId })
+      .from(categories)
+      .where(inArray(categories.userId, cleanup.userIdsToDelete)),
+    db
+      .select({ userId: timeEntries.userId })
+      .from(timeEntries)
+      .where(inArray(timeEntries.userId, cleanup.userIdsToDelete)),
+    db
+      .select({ userId: pushSubscriptions.userId })
+      .from(pushSubscriptions)
+      .where(inArray(pushSubscriptions.userId, cleanup.userIdsToDelete)),
+    db
+      .select({ userId: userSettings.userId })
+      .from(userSettings)
+      .where(inArray(userSettings.userId, cleanup.userIdsToDelete)),
+  ]);
+  const userIdsWithAppData = new Set(
+    [...categoryRows, ...timeEntryRows, ...pushSubRows, ...userSettingsRows]
+      .map((r) => r.userId)
+      .filter((id): id is string => id !== null),
+  );
+  const protectedIds = findProtectedCleanupTargets(cleanup.userIdsToDelete, userIdsWithAppData);
+
+  if (protectedIds.length > 0) {
+    console.error(
+      `削除対象のうち ${protectedIds.length}件に、事故発生後に作られたと思われる実データ（カテゴリ/作業記録/通知登録/設定）が見つかりました。誤って削除しないため処理を中止します。`,
+    );
+    for (const id of protectedIds) {
+      console.error(
+        `  user.id=${id} にデータがあります。削除ではなく、このデータを対応する旧ユーザーへ付け替える対応（案A相当）を個別に検討してください。`,
+      );
+    }
+    process.exitCode = 1;
+    return;
   }
 
   if (shouldExecute) {
