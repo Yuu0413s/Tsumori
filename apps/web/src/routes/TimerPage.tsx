@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router";
 import { calcElapsedSeconds, formatDuration, isSignificantDeviation } from "@tsumori/core";
 import { useCategories } from "../hooks/use-categories.js";
 import {
@@ -42,6 +43,24 @@ function StartTimerForm() {
   }
   if (error) {
     return <ErrorMessage message={formatApiError(error)} />;
+  }
+
+  // カテゴリが1つも無いと選択肢が出ず開始できないが、それだけでは
+  // 「なぜ始められないか」が伝わらない（初回ログイン時に特に起こりうる。Issue #41）。
+  if (categories.length === 0) {
+    return (
+      <div className="mx-auto flex max-w-sm flex-col items-center gap-3 text-center">
+        <p className="text-sm text-gray-600">
+          まだカテゴリがありません。開始するには先にカテゴリを作成してください。
+        </p>
+        <Link
+          to="/settings"
+          className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700"
+        >
+          設定でカテゴリを作成する
+        </Link>
+      </div>
+    );
   }
 
   return (

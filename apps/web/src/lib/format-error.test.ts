@@ -1,7 +1,14 @@
 import { describe, expect, test } from "bun:test";
 import { formatApiError } from "./format-error.js";
+import { UnauthorizedError } from "./unauthorized-error.js";
 
 describe("formatApiError", () => {
+  test("UnauthorizedError（セッション切れ）は再ログインを促す文言にする", () => {
+    expect(formatApiError(new UnauthorizedError())).toBe(
+      "セッションの有効期限が切れました。再度ログインしてください。",
+    );
+  });
+
   test("TypeError（fetch自体の失敗）はネットワーク接続の文言にする", () => {
     expect(formatApiError(new TypeError("Failed to fetch"))).toBe(
       "サーバーに接続できませんでした。通信環境を確認してください。",
