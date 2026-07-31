@@ -3,7 +3,10 @@ import { UnauthorizedError } from "./unauthorized-error.js";
 type Redirect = (path: string) => void;
 
 function defaultRedirect(path: string) {
-  window.location.assign(path);
+  // assign だと保護画面が履歴に残り、/login で「戻る」を押すと再び401になる
+  // 画面へ戻ってしまう（Codexレビュー指摘）。RequireAuth/RequireGuest と同じく
+  // replace で履歴を汚さない。
+  window.location.replace(path);
 }
 
 // query-client.ts の QueryCache/MutationCache から呼ばれる。RequireAuth は
