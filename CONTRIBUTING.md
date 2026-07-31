@@ -132,6 +132,27 @@ cd apps/api
 bunx wrangler secret put DATABASE_URL
 ```
 
+## 環境分離（dev / production）
+
+Neon は `dev` / `production` の2ブランチで DB を分離している。設定は3箇所にあり、
+それぞれ読む主体が異なる（#40 で検証済み）。
+
+| ファイル                    | 読む主体                                             | 向き先       |
+| ---------------------------- | ----------------------------------------------------- | ------------ |
+| `.env.local`（ルート）       | ローカルの Node.js ツール（drizzle-kit、移行スクリプト等） | `dev`        |
+| `apps/api/.dev.vars`         | `wrangler dev`（ローカルでの Workers 実行）            | `dev`        |
+| `wrangler secret`（`bunx wrangler secret put`） | デプロイ済みの本番 Worker             | `production` |
+
+⚠️ wrangler は `.env` / `.env.local` を読まない。ローカルのシークレットは必ず `.dev.vars` に書く。
+⚠️ `wrangler dev --remote` を使うと `wrangler secret`（= production）を参照してしまう。
+ローカル検証では `--remote` を付けないこと。
+
+`dev` を本番の最新状態に同期する（Reset from parent）:
+
+```bash
+bunx neonctl branches reset dev --parent
+```
+
 ## DBスキーマ変更の手順
 
 `db:push` は使わない。**`db:generate` を正とする。**
@@ -139,8 +160,9 @@ bunx wrangler secret put DATABASE_URL
 1. `packages/db/src/schema.ts` を編集
 2. `bun run db:generate`
 3. **生成された SQL を目で読む**（意図しない `DROP COLUMN` が無いか）
-4. `bun run db:migrate` で適用
-5. 生成された SQL と `drizzle/meta/` をコミットに含める
+4. まず `dev` の `DATABASE_URL_UNPOOLED` に向けて `bun run db:migrate` を実行し、動作確認する
+5. 問題が無ければ、同じマイグレーションを `production` の `DATABASE_URL_UNPOOLED` に向けて適用する
+6. 生成された SQL と `drizzle/meta/` をコミットに含める
 
 ## テスト方針
 
