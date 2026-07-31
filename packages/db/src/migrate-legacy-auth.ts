@@ -176,3 +176,26 @@ export function findAccountIdConflicts(
       : [];
   });
 }
+
+export interface AccidentalUserCleanupPlan {
+  userIdsToDelete: string[];
+}
+
+/**
+ * Issue #42: 移行（--execute）より前に本人が Google ログインしてしまうと、
+ * better-auth がメール一致でリンクせず、ランダムな新規 id で `user` を
+ * 作ってしまう（実際に発生した事故）。findEmailConflicts /
+ * findAccountIdConflicts が検出した「事故で作られた側」の user.id をまとめ、
+ * 削除対象として返す。`user` 行を削除すれば `account`/`session` は
+ * onDelete: cascade で追従して消える（schema.ts 参照）ため、ここでは
+ * user.id の集合だけを扱えばよい。
+ */
+export function planAccidentalUserCleanup(
+  emailConflicts: EmailConflict[],
+  accountIdConflicts: AccountIdConflict[],
+): AccidentalUserCleanupPlan {
+  const userIds = new Set<string>();
+  for (const c of emailConflicts) userIds.add(c.existingUserId);
+  for (const c of accountIdConflicts) userIds.add(c.existingUserId);
+  return { userIdsToDelete: [...userIds] };
+}

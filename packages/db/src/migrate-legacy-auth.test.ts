@@ -10,6 +10,7 @@ import {
   findOrphanedTimeEntryUserIds,
   findEmailConflicts,
   findAccountIdConflicts,
+  planAccidentalUserCleanup,
 } from "./migrate-legacy-auth.js";
 
 const NOW = new Date("2026-07-29T00:00:00.000Z");
@@ -339,5 +340,44 @@ describe("findAccountIdConflicts", () => {
     ]);
 
     expect(result).toEqual([]);
+  });
+});
+
+describe("planAccidentalUserCleanup", () => {
+  test("emailConflicts の existingUserId を削除対象にする", () => {
+    const result = planAccidentalUserCleanup(
+      [{ legacyId: "user_1", email: "taro@example.com", existingUserId: "accidental-id" }],
+      [],
+    );
+    expect(result).toEqual({ userIdsToDelete: ["accidental-id"] });
+  });
+
+  test("accountIdConflicts の existingUserId を削除対象にする", () => {
+    const result = planAccidentalUserCleanup(
+      [],
+      [{ legacyUserId: "user_1", accountId: "sub-1", existingUserId: "accidental-id" }],
+    );
+    expect(result).toEqual({ userIdsToDelete: ["accidental-id"] });
+  });
+
+  test("同じ existingUserId が両方の衝突で見つかっても重複させない", () => {
+    const result = planAccidentalUserCleanup(
+      [{ legacyId: "user_1", email: "taro@example.com", existingUserId: "accidental-id" }],
+      [{ legacyUserId: "user_1", accountId: "sub-1", existingUserId: "accidental-id" }],
+    );
+    expect(result).toEqual({ userIdsToDelete: ["accidental-id"] });
+  });
+
+  test("異なる existingUserId は両方とも削除対象にする（複数人が事故に遭ったケース）", () => {
+    const result = planAccidentalUserCleanup(
+      [{ legacyId: "user_1", email: "taro@example.com", existingUserId: "accidental-id-1" }],
+      [{ legacyUserId: "user_2", accountId: "sub-2", existingUserId: "accidental-id-2" }],
+    );
+    expect(result.userIdsToDelete.sort()).toEqual(["accidental-id-1", "accidental-id-2"]);
+  });
+
+  test("衝突が無ければ削除対象は0件", () => {
+    const result = planAccidentalUserCleanup([], []);
+    expect(result).toEqual({ userIdsToDelete: [] });
   });
 });
