@@ -19,3 +19,6 @@ local.db
 .vscode/*
 !.vscode/extensions.json
 .idea/
+
+# neonctl のコンテキストファイル
+.neon
