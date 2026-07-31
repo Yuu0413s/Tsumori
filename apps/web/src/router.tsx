@@ -6,6 +6,7 @@ import { RouteErrorBoundary } from "./components/RouteErrorBoundary.js";
 import { LoginPage } from "./routes/LoginPage.js";
 import { TimerPage } from "./routes/TimerPage.js";
 import { SummaryPage } from "./routes/SummaryPage.js";
+import { SettingsPage } from "./routes/SettingsPage.js";
 
 export const router = createBrowserRouter([
   {
@@ -22,6 +23,7 @@ export const router = createBrowserRouter([
         children: [
           { path: "/", element: <TimerPage /> },
           { path: "/summary", element: <SummaryPage /> },
+          { path: "/settings", element: <SettingsPage /> },
         ],
       },
     ],
