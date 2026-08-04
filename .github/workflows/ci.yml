@@ -8,7 +8,10 @@ on:
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  # PRの連続pushは古いrunを打ち切って最新を優先してよいが、
+  # main pushはdeploy-api/deploy-webが走るため打ち切らずキュー待ちにする
+  # （打ち切ると、途中まで進んだwranglerデプロイが中断されapi/webが不整合になりうる）。
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 # 最小権限。CI はコードを読むだけで書き込みは行わない。
 permissions:
