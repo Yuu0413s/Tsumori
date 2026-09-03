@@ -25,7 +25,11 @@ export function MiniTimer({
   onEnd,
 }: MiniTimerProps) {
   return (
-    <div className="flex h-dvh flex-col items-center justify-center gap-2 bg-gray-50 p-3 text-center">
+    // justify-center と overflow-y-auto の併用は、内容が枠より大きいとき先頭側が
+    // スクロールしても見えなくなる既知の挙動があるため、160px高でエラー表示等が
+    // 増えても操作できるよう justify-start + overflow-y-auto にする
+    // （Codexレビュー対応）。
+    <div className="flex h-dvh flex-col items-center justify-start gap-2 overflow-y-auto bg-gray-50 p-3 text-center">
       {entryName ? <p className="truncate text-xs text-gray-600">{entryName}</p> : null}
       <p className="font-mono text-2xl tabular-nums text-gray-900">
         {formatDuration(elapsedSeconds)}

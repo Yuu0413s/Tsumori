@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, mock, test } from "bun:test";
+import { StrictMode } from "react";
 import { act, renderHook } from "@testing-library/react";
 import { useDocumentPictureInPicture } from "./use-document-picture-in-picture.js";
 
@@ -174,6 +175,30 @@ describe("useDocumentPictureInPicture", () => {
     });
 
     expect(fakeWindow.close).toHaveBeenCalled();
+  });
+
+  test("StrictMode下（開発時のEffect二重実行）でも、開いたPiPウィンドウが即座に閉じない", async () => {
+    // 本番アプリは main.tsx で StrictMode を使っており、開発時は
+    // setup → cleanup → setup と Effect が1回多く実行される。cleanup で
+    // 立てた disposedRef を setup 側で戻し忘れると、2回目以降の open() が
+    // 常に「アンマウント済み」扱いになり、開いた瞬間に PiP が閉じてしまう
+    // （Codexレビュー対応）。
+    const fakeWindow = createFakePipWindow();
+    const requestWindow = mock(async () => fakeWindow);
+    (
+      window as unknown as { documentPictureInPicture: { requestWindow: typeof requestWindow } }
+    ).documentPictureInPicture = { requestWindow };
+
+    const { result } = renderHook(() => useDocumentPictureInPicture({ width: 240, height: 160 }), {
+      wrapper: StrictMode,
+    });
+
+    await act(async () => {
+      await result.current.open();
+    });
+
+    expect(result.current.pipWindow).toBe(fakeWindow);
+    expect(fakeWindow.close).not.toHaveBeenCalled();
   });
 
   test("アンマウント時に開いている PiP ウィンドウを閉じる", async () => {

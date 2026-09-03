@@ -79,6 +79,12 @@ export function useDocumentPictureInPicture({ width, height }: PipSize) {
   // 呼び出し元（タイマー画面）が閉じられたとき、ポータル先を失った PiP
   // ウィンドウが空のまま残り続けないようにする。
   useEffect(() => {
+    // StrictMode（開発時）は setup → cleanup → setup を1回多く実行するため、
+    // 最初の cleanup で立てた disposedRef を setup側で必ず倒しておかないと、
+    // 実際にはマウントされたままの2回目以降の open() が「アンマウント済み」
+    // 扱いになり、開いた直後の PiP ウィンドウが毎回閉じてしまう
+    // （Codexレビュー対応）。
+    disposedRef.current = false;
     return () => {
       disposedRef.current = true;
       pipWindowRef.current?.close();
