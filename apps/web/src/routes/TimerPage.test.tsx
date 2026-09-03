@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
+import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router";
 
@@ -9,6 +9,12 @@ const useStartBreakMock = mock();
 const useResumeTimeEntryMock = mock();
 const useEndTimeEntryMock = mock();
 const useClockMock = mock(() => new Date("2026-07-30T10:00:00.000Z"));
+
+// mock.module は指定パスの解決をプロセス全体で差し替えるため（このファイルに
+// 限らない）、他ファイル（use-clock.test.ts）が後から本物の use-clock.js を
+// import すると、このモックを掴んでしまう。afterAll で元に戻せるよう、
+// 差し替え前に本物のモジュールを退避しておく。
+const realUseClockModule = await import("../hooks/use-clock.js");
 
 mock.module("../hooks/use-time-entry.js", () => ({
   useCurrentTimeEntry: useCurrentTimeEntryMock,
@@ -30,6 +36,10 @@ mock.module("../hooks/use-categories.js", () => ({
 mock.module("../hooks/use-clock.js", () => ({
   useClock: useClockMock,
 }));
+
+afterAll(() => {
+  mock.module("../hooks/use-clock.js", () => realUseClockModule);
+});
 
 const { TimerPage } = await import("./TimerPage.js");
 
