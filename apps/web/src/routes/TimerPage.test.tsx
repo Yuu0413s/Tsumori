@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router";
 
 const useCurrentTimeEntryMock = mock();
@@ -73,6 +73,10 @@ describe("TimerPage", () => {
     useResumeTimeEntryMock.mockReturnValue(mutationResult());
     useEndTimeEntryMock.mockReturnValue(mutationResult());
     useClockMock.mockReturnValue(new Date("2026-07-30T10:00:00.000Z"));
+  });
+
+  afterEach(() => {
+    delete (window as { documentPictureInPicture?: unknown }).documentPictureInPicture;
   });
 
   test("進行中の記録を取得中はローディング画面を表示する", () => {
@@ -366,6 +370,125 @@ describe("TimerPage", () => {
       fireEvent.click(screen.getByRole("button", { name: "終了" }));
 
       expect(mutate).toHaveBeenCalledWith({ id: "entry_1" });
+    });
+
+    describe("ミニタイマー（Document Picture-in-Picture）", () => {
+      function createFakePipWindow() {
+        const doc = document.implementation.createHTMLDocument();
+        const target = new EventTarget();
+        return {
+          document: doc,
+          close: mock(() => target.dispatchEvent(new Event("pagehide"))),
+          addEventListener: target.addEventListener.bind(target),
+          removeEventListener: target.removeEventListener.bind(target),
+          dispatchEvent: target.dispatchEvent.bind(target),
+        } as unknown as Window;
+      }
+
+      test("非対応ブラウザでは「ミニタイマーとして固定」ボタンを表示しない", () => {
+        useCurrentTimeEntryMock.mockReturnValue({
+          data: workingEntry(),
+          isPending: false,
+          error: null,
+        });
+
+        render(<TimerPage />);
+
+        expect(screen.queryByRole("button", { name: "ミニタイマーとして固定" })).toBeNull();
+      });
+
+      test("対応ブラウザではボタン押下で PiP ウィンドウを開き、経過時間を表示する", async () => {
+        useCurrentTimeEntryMock.mockReturnValue({
+          data: workingEntry(),
+          isPending: false,
+          error: null,
+        });
+        const fakeWindow = createFakePipWindow();
+        const requestWindow = mock(async () => fakeWindow);
+        (
+          window as unknown as {
+            documentPictureInPicture: { requestWindow: typeof requestWindow };
+          }
+        ).documentPictureInPicture = { requestWindow };
+
+        render(<TimerPage />);
+        fireEvent.click(screen.getByRole("button", { name: "ミニタイマーとして固定" }));
+
+        await waitFor(() => {
+          expect(requestWindow).toHaveBeenCalledWith({ width: 240, height: 160 });
+        });
+        await waitFor(() => {
+          expect(fakeWindow.document.body.textContent).toContain("00:00:00");
+        });
+        expect(screen.getByText("ミニタイマーとして固定中")).toBeTruthy();
+      });
+
+      test("PiP ウィンドウ内の終了ボタンは本体と同じ終了処理を呼ぶ", async () => {
+        const mutate = mock();
+        useCurrentTimeEntryMock.mockReturnValue({
+          data: workingEntry({ plannedDurationMinutes: 30 }),
+          isPending: false,
+          error: null,
+        });
+        useClockMock.mockReturnValue(new Date("2026-07-30T10:25:00.000Z")); // 25分経過、乖離5分
+        useEndTimeEntryMock.mockReturnValue(mutationResult({ mutate }));
+        const fakeWindow = createFakePipWindow();
+        const requestWindow = mock(async () => fakeWindow);
+        (
+          window as unknown as {
+            documentPictureInPicture: { requestWindow: typeof requestWindow };
+          }
+        ).documentPictureInPicture = { requestWindow };
+
+        render(<TimerPage />);
+        fireEvent.click(screen.getByRole("button", { name: "ミニタイマーとして固定" }));
+        await waitFor(() => {
+          expect(fakeWindow.document.body.querySelector("button")).not.toBeNull();
+        });
+
+        const endButton = [...fakeWindow.document.body.querySelectorAll("button")].find(
+          (button) => button.textContent === "終了",
+        );
+        if (endButton === undefined) throw new Error("PiPウィンドウ内に終了ボタンが見つかりません");
+        // fakeWindow の document は defaultView を持たない検証用ドキュメントのため、
+        // window解決に依存する fireEvent ではなくネイティブの click() を使う。
+        act(() => {
+          endButton.click();
+        });
+
+        expect(mutate).toHaveBeenCalledWith({ id: "entry_1" });
+      });
+
+      test("PiP ウィンドウを閉じても本体側の表示は壊れない（固定ボタンに戻る）", async () => {
+        useCurrentTimeEntryMock.mockReturnValue({
+          data: workingEntry(),
+          isPending: false,
+          error: null,
+        });
+        const fakeWindow = createFakePipWindow();
+        const requestWindow = mock(async () => fakeWindow);
+        (
+          window as unknown as {
+            documentPictureInPicture: { requestWindow: typeof requestWindow };
+          }
+        ).documentPictureInPicture = { requestWindow };
+
+        render(<TimerPage />);
+        fireEvent.click(screen.getByRole("button", { name: "ミニタイマーとして固定" }));
+        await waitFor(() => {
+          expect(screen.getByText("ミニタイマーとして固定中")).toBeTruthy();
+        });
+
+        act(() => {
+          fakeWindow.close();
+        });
+
+        await waitFor(() => {
+          expect(screen.getByRole("button", { name: "ミニタイマーとして固定" })).toBeTruthy();
+        });
+        // 本体の経過時間表示は引き続き機能している
+        expect(screen.getByText("00:00:00")).toBeTruthy();
+      });
     });
   });
 });

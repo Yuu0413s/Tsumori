@@ -1,0 +1,52 @@
+import { formatDuration } from "@tsumori/core";
+
+type MiniTimerProps = {
+  entryName: string | null;
+  status: "working" | "on_break";
+  elapsedSeconds: number;
+  isMutating: boolean;
+  onToggleBreak: () => void;
+  onEnd: () => void;
+};
+
+/**
+ * Document Picture-in-Picture ウィンドウの中身。本体（RunningTimer）から
+ * 状態とハンドラをそのまま受け取るだけで、独自の状態は持たない。
+ */
+export function MiniTimer({
+  entryName,
+  status,
+  elapsedSeconds,
+  isMutating,
+  onToggleBreak,
+  onEnd,
+}: MiniTimerProps) {
+  return (
+    <div className="flex h-dvh flex-col items-center justify-center gap-2 bg-gray-50 p-3 text-center">
+      {entryName ? <p className="truncate text-xs text-gray-600">{entryName}</p> : null}
+      <p className="font-mono text-2xl tabular-nums text-gray-900">
+        {formatDuration(elapsedSeconds)}
+      </p>
+      {status === "on_break" ? <p className="text-xs text-amber-600">休憩中</p> : null}
+
+      <div className="flex w-full gap-2">
+        <button
+          type="button"
+          onClick={onToggleBreak}
+          disabled={isMutating}
+          className="min-h-11 flex-1 rounded-md border border-gray-300 px-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {status === "working" ? "休憩" : "再開"}
+        </button>
+        <button
+          type="button"
+          onClick={onEnd}
+          disabled={isMutating}
+          className="min-h-11 flex-1 rounded-md bg-gray-900 px-2 text-sm font-medium text-white hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          終了
+        </button>
+      </div>
+    </div>
+  );
+}

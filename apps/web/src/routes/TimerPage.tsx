@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { Link } from "react-router";
 import { calcElapsedSeconds, formatDuration, isSignificantDeviation } from "@tsumori/core";
 import { useCategories } from "../hooks/use-categories.js";
@@ -11,10 +12,14 @@ import {
   type TimeEntry,
 } from "../hooks/use-time-entry.js";
 import { useClock } from "../hooks/use-clock.js";
+import { useDocumentPictureInPicture } from "../hooks/use-document-picture-in-picture.js";
 import { DeviationModal } from "../components/DeviationModal.js";
 import { ErrorMessage } from "../components/ErrorMessage.js";
 import { LoadingScreen } from "../components/LoadingScreen.js";
+import { MiniTimer } from "../components/MiniTimer.js";
 import { formatApiError } from "../lib/format-error.js";
+
+const PIP_WINDOW_SIZE = { width: 240, height: 160 };
 
 export function TimerPage() {
   const { data: currentEntry, isPending, error } = useCurrentTimeEntry();
@@ -140,6 +145,12 @@ function RunningTimer({ entry }: { entry: TimeEntry }) {
   const endTimeEntry = useEndTimeEntry();
   const [showDeviationModal, setShowDeviationModal] = useState(false);
   const now = useClock();
+  const {
+    pipWindow,
+    isSupported: isPipSupported,
+    open: openPip,
+    close: closePip,
+  } = useDocumentPictureInPicture(PIP_WINDOW_SIZE);
 
   // GET /current は進行中（working/on_break）のみ返すため completed は来ないが、
   // レスポンスの型自体は TimeEntry 全体の status（completed を含む）になっている。
@@ -160,6 +171,16 @@ function RunningTimer({ entry }: { entry: TimeEntry }) {
       return;
     }
     endTimeEntry.mutate({ id: entry.id });
+  };
+
+  // MiniTimer（PiPウィンドウ）側のボタンも同じ分岐で呼ぶため、本体のボタンJSXとは
+  // 別に共通化しておく（本体側は状態に応じて表示テキスト自体を変えるためJSXで分岐）。
+  const handleToggleBreak = () => {
+    if (entry.status === "working") {
+      startBreak.mutate(entry.id);
+    } else {
+      resumeTimeEntry.mutate(entry.id);
+    }
   };
 
   const mutationError =
@@ -209,6 +230,50 @@ function RunningTimer({ entry }: { entry: TimeEntry }) {
           終了
         </button>
       </div>
+
+      {isPipSupported ? (
+        pipWindow ? (
+          <div className="flex flex-col items-center gap-1 text-xs text-gray-500">
+            <p>ミニタイマーとして固定中</p>
+            <button
+              type="button"
+              onClick={closePip}
+              className="text-gray-600 underline hover:text-gray-900"
+            >
+              固定を解除
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center gap-1">
+            <button
+              type="button"
+              onClick={() => {
+                void openPip();
+              }}
+              className="min-h-11 rounded-md border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              ミニタイマーとして固定
+            </button>
+            <p className="text-xs text-gray-500">
+              このタブを閉じるとミニタイマーも閉じます。タブは開いたまま（最小化可）にしてください。
+            </p>
+          </div>
+        )
+      ) : null}
+
+      {pipWindow
+        ? createPortal(
+            <MiniTimer
+              entryName={entry.name}
+              status={entry.status === "on_break" ? "on_break" : "working"}
+              elapsedSeconds={elapsedSeconds}
+              isMutating={isMutating}
+              onToggleBreak={handleToggleBreak}
+              onEnd={handleEndClick}
+            />,
+            pipWindow.document.body,
+          )
+        : null}
 
       {showDeviationModal ? (
         <DeviationModal
