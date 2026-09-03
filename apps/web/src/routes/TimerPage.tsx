@@ -258,6 +258,12 @@ function RunningTimer({ entry }: { entry: TimeEntry }) {
             <p className="text-xs text-gray-500">
               このタブを閉じるとミニタイマーも閉じます。タブは開いたまま（最小化可）にしてください。
             </p>
+            {/* macOSのフルスクリーンモード（緑ボタン等）で他アプリを使っていると、
+                別のSpace（仮想デスクトップ）に切り替わるため、その上にはミニタイマーが
+                出せない（ブラウザ側の既知の制約）。最大化表示なら問題ない。 */}
+            <p className="text-xs text-gray-500">
+              他のアプリを「フルスクリーンモード」で使っていると、その上には表示されない場合があります（最大化表示なら問題ありません）。
+            </p>
             {pipError ? <ErrorMessage message={pipError.message} /> : null}
           </div>
         )

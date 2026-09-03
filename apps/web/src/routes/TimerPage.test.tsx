@@ -397,6 +397,28 @@ describe("TimerPage", () => {
         expect(screen.queryByRole("button", { name: "ミニタイマーとして固定" })).toBeNull();
       });
 
+      test("固定ボタンと合わせて、フルスクリーンアプリの上には出ない場合がある旨の注記を表示する", () => {
+        useCurrentTimeEntryMock.mockReturnValue({
+          data: workingEntry(),
+          isPending: false,
+          error: null,
+        });
+        const requestWindow = mock(async () => createFakePipWindow());
+        (
+          window as unknown as {
+            documentPictureInPicture: { requestWindow: typeof requestWindow };
+          }
+        ).documentPictureInPicture = { requestWindow };
+
+        render(<TimerPage />);
+
+        expect(
+          screen.getByText(
+            "他のアプリを「フルスクリーンモード」で使っていると、その上には表示されない場合があります（最大化表示なら問題ありません）。",
+          ),
+        ).toBeTruthy();
+      });
+
       test("対応ブラウザではボタン押下で PiP ウィンドウを開き、経過時間を表示する", async () => {
         useCurrentTimeEntryMock.mockReturnValue({
           data: workingEntry(),
