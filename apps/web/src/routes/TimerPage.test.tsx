@@ -10,6 +10,13 @@ const useResumeTimeEntryMock = mock();
 const useEndTimeEntryMock = mock();
 const useClockMock = mock(() => new Date("2026-07-30T10:00:00.000Z"));
 
+// mock.module は指定パスの解決をプロセス全体で差し替える（このファイルに
+// 限らない）。afterAll でテストファイルをまたいだ復元を試みたが、bun 1.3.14
+// では同一ファイル内に複数の test() がある場合に復元が次のファイルへ
+// 反映されないことがあり信頼できなかった（検証済み）。そのため、本物の
+// use-clock.js を直接テストする use-clock.test.ts 側を、mock.module を使う
+// このファイルとは別の bun プロセスで実行することで汚染を防いでいる
+// （ルート package.json の "test" スクリプトを参照）。
 mock.module("../hooks/use-time-entry.js", () => ({
   useCurrentTimeEntry: useCurrentTimeEntryMock,
   useStartTimeEntry: useStartTimeEntryMock,
