@@ -30,7 +30,7 @@ export function DeviationModal({ onSubmit, onCancel }: DeviationModalProps) {
     >
       {/* PiPウィンドウ（240×160）のような極小ビューポートでもモーダル本体だけを
           スクロールして操作できるようにする（外側にもoverflow-y-autoを付けると
-          スクロール領域が二重になり紛らわしいため内側だけに統一。Codexレビュー対応）。 */}
+          スクロール領域が二重になり紛らわしいため内側だけに統一）。 */}
       <div className="max-h-full w-full max-w-sm overflow-y-auto rounded-lg bg-white p-6 shadow-lg">
         <h2 id="deviation-modal-heading" className="text-lg font-bold text-gray-900">
           予定時間と差がありました

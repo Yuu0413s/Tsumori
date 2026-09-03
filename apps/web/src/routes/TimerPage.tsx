@@ -271,7 +271,7 @@ function RunningTimer({ entry }: { entry: TimeEntry }) {
               elapsedSeconds={elapsedSeconds}
               isMutating={isMutating}
               // PiPだけを見ているユーザーにも失敗理由が伝わるよう、本体と同じ
-              // mutationError をそのまま渡す（Codexレビュー対応）。
+              // mutationError をそのまま渡す。
               errorMessage={mutationError ? formatApiError(mutationError) : null}
               onToggleBreak={handleToggleBreak}
               onEnd={handleEndClick}
@@ -282,8 +282,7 @@ function RunningTimer({ entry }: { entry: TimeEntry }) {
 
       {showDeviationModal
         ? // PiP固定中は本体タブが見えていない（最小化されている）想定のため、
-          // ユーザーが実際に見ている PiP ウィンドウ側にモーダルを出す
-          // （Codexレビュー対応：本体タブにしか出ないと操作が止まって見える）。
+          // ユーザーが実際に見ている PiP ウィンドウ側にモーダルを出す。
           renderDeviationModal({
             pipWindow,
             onCancel: () => setShowDeviationModal(false),

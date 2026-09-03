@@ -181,8 +181,7 @@ describe("useDocumentPictureInPicture", () => {
     // 本番アプリは main.tsx で StrictMode を使っており、開発時は
     // setup → cleanup → setup と Effect が1回多く実行される。cleanup で
     // 立てた disposedRef を setup 側で戻し忘れると、2回目以降の open() が
-    // 常に「アンマウント済み」扱いになり、開いた瞬間に PiP が閉じてしまう
-    // （Codexレビュー対応）。
+    // 常に「アンマウント済み」扱いになり、開いた瞬間に PiP が閉じてしまう。
     const fakeWindow = createFakePipWindow();
     const requestWindow = mock(async () => fakeWindow);
     (

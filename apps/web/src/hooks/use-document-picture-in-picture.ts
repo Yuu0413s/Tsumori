@@ -17,11 +17,10 @@ export function useDocumentPictureInPicture({ width, height }: PipSize) {
   const [error, setError] = useState<Error | null>(null);
   const pipWindowRef = useRef<Window | null>(null);
   // requestWindow() は解決するまで pipWindowRef が埋まらないため、解決前の
-  // 連打をこのフラグ単独で弾く（Codexレビュー対応）。
+  // 連打をこのフラグ単独で弾く。
   const isOpeningRef = useRef(false);
   // requestWindow() の解決待ち中にフック自体がアンマウントされた場合、
-  // 解決後に開いた PiP ウィンドウだけが残り続けないようにする
-  // （Codexレビュー対応）。
+  // 解決後に開いた PiP ウィンドウだけが残り続けないようにする。
   const disposedRef = useRef(false);
 
   const open = useCallback(async () => {
@@ -64,8 +63,7 @@ export function useDocumentPictureInPicture({ width, height }: PipSize) {
       setPipWindow(win);
     } catch {
       // requestWindow はユーザー操作条件を満たさない場合やブラウザ設定で
-      // reject しうる（NotAllowedError 等）。握りつぶさず画面に伝える
-      // （Codexレビュー対応）。
+      // reject しうる（NotAllowedError 等）。握りつぶさず画面に伝える。
       setError(new Error("ミニタイマーを開けませんでした。ブラウザの設定をご確認ください。"));
     } finally {
       isOpeningRef.current = false;
@@ -82,8 +80,7 @@ export function useDocumentPictureInPicture({ width, height }: PipSize) {
     // StrictMode（開発時）は setup → cleanup → setup を1回多く実行するため、
     // 最初の cleanup で立てた disposedRef を setup側で必ず倒しておかないと、
     // 実際にはマウントされたままの2回目以降の open() が「アンマウント済み」
-    // 扱いになり、開いた直後の PiP ウィンドウが毎回閉じてしまう
-    // （Codexレビュー対応）。
+    // 扱いになり、開いた直後の PiP ウィンドウが毎回閉じてしまう。
     disposedRef.current = false;
     return () => {
       disposedRef.current = true;
