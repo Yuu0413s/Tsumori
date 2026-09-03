@@ -1,4 +1,4 @@
-import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router";
 
@@ -10,12 +10,13 @@ const useResumeTimeEntryMock = mock();
 const useEndTimeEntryMock = mock();
 const useClockMock = mock(() => new Date("2026-07-30T10:00:00.000Z"));
 
-// mock.module は指定パスの解決をプロセス全体で差し替えるため（このファイルに
-// 限らない）、他ファイル（use-clock.test.ts）が後から本物の use-clock.js を
-// import すると、このモックを掴んでしまう。afterAll で元に戻せるよう、
-// 差し替え前に本物のモジュールを退避しておく。
-const realUseClockModule = await import("../hooks/use-clock.js");
-
+// mock.module は指定パスの解決をプロセス全体で差し替える（このファイルに
+// 限らない）。afterAll でテストファイルをまたいだ復元を試みたが、bun 1.3.14
+// では同一ファイル内に複数の test() がある場合に復元が次のファイルへ
+// 反映されないことがあり信頼できなかった（検証済み）。そのため、本物の
+// use-clock.js を直接テストする use-clock.test.ts 側を、mock.module を使う
+// このファイルとは別の bun プロセスで実行することで汚染を防いでいる
+// （ルート package.json の "test" スクリプトを参照）。
 mock.module("../hooks/use-time-entry.js", () => ({
   useCurrentTimeEntry: useCurrentTimeEntryMock,
   useStartTimeEntry: useStartTimeEntryMock,
@@ -36,14 +37,6 @@ mock.module("../hooks/use-categories.js", () => ({
 mock.module("../hooks/use-clock.js", () => ({
   useClock: useClockMock,
 }));
-
-afterAll(() => {
-  // realUseClockModule は動的 import が返す ES モジュールの namespace
-  // オブジェクトで、mock.module の factory がこれをそのまま返しても
-  // bun が「本物のモジュール」として認識できずモックのままになる
-  // （実験で確認済み）。プレーンオブジェクトに変換してから渡す。
-  mock.module("../hooks/use-clock.js", () => ({ ...realUseClockModule }));
-});
 
 const { TimerPage } = await import("./TimerPage.js");
 
