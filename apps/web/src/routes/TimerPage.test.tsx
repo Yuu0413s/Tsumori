@@ -38,7 +38,11 @@ mock.module("../hooks/use-clock.js", () => ({
 }));
 
 afterAll(() => {
-  mock.module("../hooks/use-clock.js", () => realUseClockModule);
+  // realUseClockModule は動的 import が返す ES モジュールの namespace
+  // オブジェクトで、mock.module の factory がこれをそのまま返しても
+  // bun が「本物のモジュール」として認識できずモックのままになる
+  // （実験で確認済み）。プレーンオブジェクトに変換してから渡す。
+  mock.module("../hooks/use-clock.js", () => ({ ...realUseClockModule }));
 });
 
 const { TimerPage } = await import("./TimerPage.js");
