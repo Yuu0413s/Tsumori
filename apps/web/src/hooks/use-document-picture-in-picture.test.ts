@@ -97,6 +97,54 @@ describe("useDocumentPictureInPicture", () => {
     expect(fakeWindow.close).toHaveBeenCalled();
   });
 
+  test("requestWindow が失敗したら error を設定し、pipWindow は null のまま", async () => {
+    const requestWindow = mock(async () => {
+      throw new Error("NotAllowedError");
+    });
+    (
+      window as unknown as { documentPictureInPicture: { requestWindow: typeof requestWindow } }
+    ).documentPictureInPicture = { requestWindow };
+
+    const { result } = renderHook(() => useDocumentPictureInPicture({ width: 240, height: 160 }));
+
+    await act(async () => {
+      await result.current.open();
+    });
+
+    expect(result.current.pipWindow).toBeNull();
+    expect(result.current.error).not.toBeNull();
+  });
+
+  test("open() 実行中の連打では requestWindow を1回しか呼ばない", async () => {
+    const fakeWindow = createFakePipWindow();
+    let resolveRequestWindow: (win: Window) => void = () => {};
+    const requestWindow = mock(
+      () =>
+        new Promise<Window>((resolve) => {
+          resolveRequestWindow = resolve;
+        }),
+    );
+    (
+      window as unknown as { documentPictureInPicture: { requestWindow: typeof requestWindow } }
+    ).documentPictureInPicture = { requestWindow };
+
+    const { result } = renderHook(() => useDocumentPictureInPicture({ width: 240, height: 160 }));
+
+    let firstOpen!: Promise<void>;
+    let secondOpen!: Promise<void>;
+    act(() => {
+      firstOpen = result.current.open();
+      secondOpen = result.current.open();
+    });
+
+    resolveRequestWindow(fakeWindow);
+    await act(async () => {
+      await Promise.all([firstOpen, secondOpen]);
+    });
+
+    expect(requestWindow).toHaveBeenCalledTimes(1);
+  });
+
   test("アンマウント時に開いている PiP ウィンドウを閉じる", async () => {
     const fakeWindow = createFakePipWindow();
     const requestWindow = mock(async () => fakeWindow);

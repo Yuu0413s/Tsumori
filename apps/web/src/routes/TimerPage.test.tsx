@@ -459,6 +459,40 @@ describe("TimerPage", () => {
         expect(mutate).toHaveBeenCalledWith({ id: "entry_1" });
       });
 
+      test("PiP固定中に乖離が大きい終了をすると、乖離モーダルが本体ではなくPiPウィンドウ側に出る", async () => {
+        useCurrentTimeEntryMock.mockReturnValue({
+          data: workingEntry({ plannedDurationMinutes: 30 }),
+          isPending: false,
+          error: null,
+        });
+        useClockMock.mockReturnValue(new Date("2026-07-30T10:40:00.000Z")); // 40分経過、乖離10分
+        const fakeWindow = createFakePipWindow();
+        const requestWindow = mock(async () => fakeWindow);
+        (
+          window as unknown as {
+            documentPictureInPicture: { requestWindow: typeof requestWindow };
+          }
+        ).documentPictureInPicture = { requestWindow };
+
+        render(<TimerPage />);
+        fireEvent.click(screen.getByRole("button", { name: "ミニタイマーとして固定" }));
+        await waitFor(() => {
+          expect(fakeWindow.document.body.querySelector("button")).not.toBeNull();
+        });
+
+        const endButton = [...fakeWindow.document.body.querySelectorAll("button")].find(
+          (button) => button.textContent === "終了",
+        );
+        if (endButton === undefined) throw new Error("PiPウィンドウ内に終了ボタンが見つかりません");
+        act(() => {
+          endButton.click();
+        });
+
+        expect(fakeWindow.document.body.textContent).toContain("予定時間と差がありました");
+        // 本体タブ側には出ない（見えていない想定のウィンドウに出しても気づかれないため）
+        expect(screen.queryByText("予定時間と差がありました")).toBeNull();
+      });
+
       test("PiP ウィンドウを閉じても本体側の表示は壊れない（固定ボタンに戻る）", async () => {
         useCurrentTimeEntryMock.mockReturnValue({
           data: workingEntry(),
@@ -488,6 +522,33 @@ describe("TimerPage", () => {
         });
         // 本体の経過時間表示は引き続き機能している
         expect(screen.getByText("00:00:00")).toBeTruthy();
+      });
+
+      test("PiP ウィンドウを開けなかったときはエラーメッセージを表示する", async () => {
+        useCurrentTimeEntryMock.mockReturnValue({
+          data: workingEntry(),
+          isPending: false,
+          error: null,
+        });
+        const requestWindow = mock(async () => {
+          throw new Error("NotAllowedError");
+        });
+        (
+          window as unknown as {
+            documentPictureInPicture: { requestWindow: typeof requestWindow };
+          }
+        ).documentPictureInPicture = { requestWindow };
+
+        render(<TimerPage />);
+        fireEvent.click(screen.getByRole("button", { name: "ミニタイマーとして固定" }));
+
+        await waitFor(() => {
+          expect(
+            screen.getByText("ミニタイマーを開けませんでした。ブラウザの設定をご確認ください。"),
+          ).toBeTruthy();
+        });
+        // 開けなかったので固定ボタンは引き続き表示される
+        expect(screen.getByRole("button", { name: "ミニタイマーとして固定" })).toBeTruthy();
       });
     });
   });

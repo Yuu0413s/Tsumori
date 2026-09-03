@@ -150,6 +150,7 @@ function RunningTimer({ entry }: { entry: TimeEntry }) {
     isSupported: isPipSupported,
     open: openPip,
     close: closePip,
+    error: pipError,
   } = useDocumentPictureInPicture(PIP_WINDOW_SIZE);
 
   // GET /current は進行中（working/on_break）のみ返すため completed は来ないが、
@@ -257,6 +258,7 @@ function RunningTimer({ entry }: { entry: TimeEntry }) {
             <p className="text-xs text-gray-500">
               このタブを閉じるとミニタイマーも閉じます。タブは開いたまま（最小化可）にしてください。
             </p>
+            {pipError ? <ErrorMessage message={pipError.message} /> : null}
           </div>
         )
       ) : null}
@@ -275,15 +277,23 @@ function RunningTimer({ entry }: { entry: TimeEntry }) {
           )
         : null}
 
-      {showDeviationModal ? (
-        <DeviationModal
-          onCancel={() => setShowDeviationModal(false)}
-          onSubmit={({ focused, reason }) => {
-            setShowDeviationModal(false);
-            endTimeEntry.mutate({ id: entry.id, focused, reason });
-          }}
-        />
-      ) : null}
+      {showDeviationModal
+        ? (() => {
+            const modal = (
+              <DeviationModal
+                onCancel={() => setShowDeviationModal(false)}
+                onSubmit={({ focused, reason }) => {
+                  setShowDeviationModal(false);
+                  endTimeEntry.mutate({ id: entry.id, focused, reason });
+                }}
+              />
+            );
+            // PiP固定中は本体タブが見えていない（最小化されている）想定のため、
+            // ユーザーが実際に見ている PiP ウィンドウ側にモーダルを出す
+            // （Codexレビュー対応：本体タブにしか出ないと操作が止まって見える）。
+            return pipWindow ? createPortal(modal, pipWindow.document.body) : modal;
+          })()
+        : null}
     </div>
   );
 }

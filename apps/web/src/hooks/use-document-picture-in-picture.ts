@@ -14,37 +14,53 @@ type PipSize = { width: number; height: number };
  */
 export function useDocumentPictureInPicture({ width, height }: PipSize) {
   const [pipWindow, setPipWindow] = useState<Window | null>(null);
+  const [error, setError] = useState<Error | null>(null);
   const pipWindowRef = useRef<Window | null>(null);
+  // requestWindow() は解決するまで pipWindowRef が埋まらないため、解決前の
+  // 連打をこのフラグ単独で弾く（Codexレビュー対応）。
+  const isOpeningRef = useRef(false);
 
   const open = useCallback(async () => {
     const pip = window.documentPictureInPicture;
-    if (!pip || pipWindowRef.current !== null) return;
+    if (!pip || pipWindowRef.current !== null || isOpeningRef.current) return;
 
-    const win = await pip.requestWindow({ width, height });
+    isOpeningRef.current = true;
+    setError(null);
 
-    for (const sheet of document.styleSheets) {
-      try {
-        const style = win.document.createElement("style");
-        style.textContent = [...sheet.cssRules].map((rule) => rule.cssText).join("");
-        win.document.head.appendChild(style);
-      } catch {
-        // cross-origin のスタイルシートは cssRules が読めないため無視する
+    try {
+      const win = await pip.requestWindow({ width, height });
+
+      for (const sheet of document.styleSheets) {
+        try {
+          const style = win.document.createElement("style");
+          style.textContent = [...sheet.cssRules].map((rule) => rule.cssText).join("");
+          win.document.head.appendChild(style);
+        } catch {
+          // cross-origin のスタイルシートは cssRules が読めないため無視する
+        }
       }
+
+      // タブ側から見て PiP ウィンドウを閉じたときの同期。ユーザーが PiP の
+      // 閉じるボタンを押した場合もここを通る。
+      win.addEventListener(
+        "pagehide",
+        () => {
+          pipWindowRef.current = null;
+          setPipWindow(null);
+        },
+        { once: true },
+      );
+
+      pipWindowRef.current = win;
+      setPipWindow(win);
+    } catch {
+      // requestWindow はユーザー操作条件を満たさない場合やブラウザ設定で
+      // reject しうる（NotAllowedError 等）。握りつぶさず画面に伝える
+      // （Codexレビュー対応）。
+      setError(new Error("ミニタイマーを開けませんでした。ブラウザの設定をご確認ください。"));
+    } finally {
+      isOpeningRef.current = false;
     }
-
-    // タブ側から見て PiP ウィンドウを閉じたときの同期。ユーザーが PiP の
-    // 閉じるボタンを押した場合もここを通る。
-    win.addEventListener(
-      "pagehide",
-      () => {
-        pipWindowRef.current = null;
-        setPipWindow(null);
-      },
-      { once: true },
-    );
-
-    pipWindowRef.current = win;
-    setPipWindow(win);
   }, [width, height]);
 
   const close = useCallback(() => {
@@ -59,5 +75,5 @@ export function useDocumentPictureInPicture({ width, height }: PipSize) {
     };
   }, []);
 
-  return { pipWindow, isSupported: isDocumentPipSupported(), open, close };
+  return { pipWindow, isSupported: isDocumentPipSupported(), open, close, error };
 }
