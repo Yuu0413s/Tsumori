@@ -270,6 +270,9 @@ function RunningTimer({ entry }: { entry: TimeEntry }) {
               status={entry.status === "on_break" ? "on_break" : "working"}
               elapsedSeconds={elapsedSeconds}
               isMutating={isMutating}
+              // PiPだけを見ているユーザーにも失敗理由が伝わるよう、本体と同じ
+              // mutationError をそのまま渡す（Codexレビュー対応）。
+              errorMessage={mutationError ? formatApiError(mutationError) : null}
               onToggleBreak={handleToggleBreak}
               onEnd={handleEndClick}
             />,
@@ -278,22 +281,31 @@ function RunningTimer({ entry }: { entry: TimeEntry }) {
         : null}
 
       {showDeviationModal
-        ? (() => {
-            const modal = (
-              <DeviationModal
-                onCancel={() => setShowDeviationModal(false)}
-                onSubmit={({ focused, reason }) => {
-                  setShowDeviationModal(false);
-                  endTimeEntry.mutate({ id: entry.id, focused, reason });
-                }}
-              />
-            );
-            // PiP固定中は本体タブが見えていない（最小化されている）想定のため、
-            // ユーザーが実際に見ている PiP ウィンドウ側にモーダルを出す
-            // （Codexレビュー対応：本体タブにしか出ないと操作が止まって見える）。
-            return pipWindow ? createPortal(modal, pipWindow.document.body) : modal;
-          })()
+        ? // PiP固定中は本体タブが見えていない（最小化されている）想定のため、
+          // ユーザーが実際に見ている PiP ウィンドウ側にモーダルを出す
+          // （Codexレビュー対応：本体タブにしか出ないと操作が止まって見える）。
+          renderDeviationModal({
+            pipWindow,
+            onCancel: () => setShowDeviationModal(false),
+            onSubmit: ({ focused, reason }) => {
+              setShowDeviationModal(false);
+              endTimeEntry.mutate({ id: entry.id, focused, reason });
+            },
+          })
         : null}
     </div>
   );
+}
+
+function renderDeviationModal({
+  pipWindow,
+  onCancel,
+  onSubmit,
+}: {
+  pipWindow: Window | null;
+  onCancel: () => void;
+  onSubmit: (result: { focused: boolean; reason: string | undefined }) => void;
+}) {
+  const modal = <DeviationModal onCancel={onCancel} onSubmit={onSubmit} />;
+  return pipWindow ? createPortal(modal, pipWindow.document.body) : modal;
 }

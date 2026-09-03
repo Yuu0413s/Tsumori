@@ -145,6 +145,37 @@ describe("useDocumentPictureInPicture", () => {
     expect(requestWindow).toHaveBeenCalledTimes(1);
   });
 
+  test("open() の解決待ち中にアンマウントされたら、解決後に届いた PiP ウィンドウを即座に閉じる", async () => {
+    const fakeWindow = createFakePipWindow();
+    let resolveRequestWindow: (win: Window) => void = () => {};
+    const requestWindow = mock(
+      () =>
+        new Promise<Window>((resolve) => {
+          resolveRequestWindow = resolve;
+        }),
+    );
+    (
+      window as unknown as { documentPictureInPicture: { requestWindow: typeof requestWindow } }
+    ).documentPictureInPicture = { requestWindow };
+
+    const { result, unmount } = renderHook(() =>
+      useDocumentPictureInPicture({ width: 240, height: 160 }),
+    );
+
+    let openPromise!: Promise<void>;
+    act(() => {
+      openPromise = result.current.open();
+    });
+
+    unmount();
+    resolveRequestWindow(fakeWindow);
+    await act(async () => {
+      await openPromise;
+    });
+
+    expect(fakeWindow.close).toHaveBeenCalled();
+  });
+
   test("アンマウント時に開いている PiP ウィンドウを閉じる", async () => {
     const fakeWindow = createFakePipWindow();
     const requestWindow = mock(async () => fakeWindow);

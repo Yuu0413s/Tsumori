@@ -1,10 +1,12 @@
 import { formatDuration } from "@tsumori/core";
+import { ErrorMessage } from "./ErrorMessage.js";
 
 type MiniTimerProps = {
   entryName: string | null;
   status: "working" | "on_break";
   elapsedSeconds: number;
   isMutating: boolean;
+  errorMessage: string | null;
   onToggleBreak: () => void;
   onEnd: () => void;
 };
@@ -18,6 +20,7 @@ export function MiniTimer({
   status,
   elapsedSeconds,
   isMutating,
+  errorMessage,
   onToggleBreak,
   onEnd,
 }: MiniTimerProps) {
@@ -28,6 +31,7 @@ export function MiniTimer({
         {formatDuration(elapsedSeconds)}
       </p>
       {status === "on_break" ? <p className="text-xs text-amber-600">休憩中</p> : null}
+      {errorMessage ? <ErrorMessage message={errorMessage} /> : null}
 
       <div className="flex w-full gap-2">
         <button

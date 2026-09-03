@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-/** 対応ブラウザ（Chrome/Edge 130+）でのみ true。Firefox/Safari では false。 */
+/** 対応ブラウザ（Chrome/Edge 系）でのみ true。Firefox/Safari では false。 */
 export function isDocumentPipSupported(): boolean {
   return typeof window !== "undefined" && "documentPictureInPicture" in window;
 }
@@ -19,6 +19,10 @@ export function useDocumentPictureInPicture({ width, height }: PipSize) {
   // requestWindow() は解決するまで pipWindowRef が埋まらないため、解決前の
   // 連打をこのフラグ単独で弾く（Codexレビュー対応）。
   const isOpeningRef = useRef(false);
+  // requestWindow() の解決待ち中にフック自体がアンマウントされた場合、
+  // 解決後に開いた PiP ウィンドウだけが残り続けないようにする
+  // （Codexレビュー対応）。
+  const disposedRef = useRef(false);
 
   const open = useCallback(async () => {
     const pip = window.documentPictureInPicture;
@@ -29,6 +33,11 @@ export function useDocumentPictureInPicture({ width, height }: PipSize) {
 
     try {
       const win = await pip.requestWindow({ width, height });
+
+      if (disposedRef.current) {
+        win.close();
+        return;
+      }
 
       for (const sheet of document.styleSheets) {
         try {
@@ -71,6 +80,7 @@ export function useDocumentPictureInPicture({ width, height }: PipSize) {
   // ウィンドウが空のまま残り続けないようにする。
   useEffect(() => {
     return () => {
+      disposedRef.current = true;
       pipWindowRef.current?.close();
     };
   }, []);

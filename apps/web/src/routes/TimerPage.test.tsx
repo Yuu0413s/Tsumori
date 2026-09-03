@@ -423,6 +423,35 @@ describe("TimerPage", () => {
         expect(screen.getByText("ミニタイマーとして固定中")).toBeTruthy();
       });
 
+      test("休憩リクエストが失敗すると、PiP ウィンドウ側にもエラーメッセージを表示する", async () => {
+        useCurrentTimeEntryMock.mockReturnValue({
+          data: workingEntry(),
+          isPending: false,
+          error: null,
+        });
+        useStartBreakMock.mockReturnValue(
+          mutationResult({
+            error: new Error("サーバーに接続できませんでした。通信環境を確認してください。"),
+          }),
+        );
+        const fakeWindow = createFakePipWindow();
+        const requestWindow = mock(async () => fakeWindow);
+        (
+          window as unknown as {
+            documentPictureInPicture: { requestWindow: typeof requestWindow };
+          }
+        ).documentPictureInPicture = { requestWindow };
+
+        render(<TimerPage />);
+        fireEvent.click(screen.getByRole("button", { name: "ミニタイマーとして固定" }));
+
+        await waitFor(() => {
+          expect(fakeWindow.document.body.textContent).toContain(
+            "サーバーに接続できませんでした。通信環境を確認してください。",
+          );
+        });
+      });
+
       test("PiP ウィンドウ内の終了ボタンは本体と同じ終了処理を呼ぶ", async () => {
         const mutate = mock();
         useCurrentTimeEntryMock.mockReturnValue({
