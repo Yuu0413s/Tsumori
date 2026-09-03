@@ -1,0 +1,92 @@
+import { useCallback, useEffect, useRef, useState } from "react";
+
+/** 対応ブラウザ（Chrome/Edge 系）でのみ true。Firefox/Safari では false。 */
+export function isDocumentPipSupported(): boolean {
+  return typeof window !== "undefined" && "documentPictureInPicture" in window;
+}
+
+type PipSize = { width: number; height: number };
+
+/**
+ * Document Picture-in-Picture ウィンドウの開閉を管理する。
+ * 開いた瞬間に既存のスタイルシートをコピーしないと、PiP ウィンドウ内で
+ * Tailwind が効かず表示が崩れるため、ここでまとめて行う。
+ */
+export function useDocumentPictureInPicture({ width, height }: PipSize) {
+  const [pipWindow, setPipWindow] = useState<Window | null>(null);
+  const [error, setError] = useState<Error | null>(null);
+  const pipWindowRef = useRef<Window | null>(null);
+  // requestWindow() は解決するまで pipWindowRef が埋まらないため、解決前の
+  // 連打をこのフラグ単独で弾く。
+  const isOpeningRef = useRef(false);
+  // requestWindow() の解決待ち中にフック自体がアンマウントされた場合、
+  // 解決後に開いた PiP ウィンドウだけが残り続けないようにする。
+  const disposedRef = useRef(false);
+
+  const open = useCallback(async () => {
+    const pip = window.documentPictureInPicture;
+    if (!pip || pipWindowRef.current !== null || isOpeningRef.current) return;
+
+    isOpeningRef.current = true;
+    setError(null);
+
+    try {
+      const win = await pip.requestWindow({ width, height });
+
+      if (disposedRef.current) {
+        win.close();
+        return;
+      }
+
+      for (const sheet of document.styleSheets) {
+        try {
+          const style = win.document.createElement("style");
+          style.textContent = [...sheet.cssRules].map((rule) => rule.cssText).join("");
+          win.document.head.appendChild(style);
+        } catch {
+          // cross-origin のスタイルシートは cssRules が読めないため無視する
+        }
+      }
+
+      // タブ側から見て PiP ウィンドウを閉じたときの同期。ユーザーが PiP の
+      // 閉じるボタンを押した場合もここを通る。
+      win.addEventListener(
+        "pagehide",
+        () => {
+          pipWindowRef.current = null;
+          setPipWindow(null);
+        },
+        { once: true },
+      );
+
+      pipWindowRef.current = win;
+      setPipWindow(win);
+    } catch {
+      // requestWindow はユーザー操作条件を満たさない場合やブラウザ設定で
+      // reject しうる（NotAllowedError 等）。握りつぶさず画面に伝える。
+      setError(new Error("ミニタイマーを開けませんでした。ブラウザの設定をご確認ください。"));
+    } finally {
+      isOpeningRef.current = false;
+    }
+  }, [width, height]);
+
+  const close = useCallback(() => {
+    pipWindowRef.current?.close();
+  }, []);
+
+  // 呼び出し元（タイマー画面）が閉じられたとき、ポータル先を失った PiP
+  // ウィンドウが空のまま残り続けないようにする。
+  useEffect(() => {
+    // StrictMode（開発時）は setup → cleanup → setup を1回多く実行するため、
+    // 最初の cleanup で立てた disposedRef を setup側で必ず倒しておかないと、
+    // 実際にはマウントされたままの2回目以降の open() が「アンマウント済み」
+    // 扱いになり、開いた直後の PiP ウィンドウが毎回閉じてしまう。
+    disposedRef.current = false;
+    return () => {
+      disposedRef.current = true;
+      pipWindowRef.current?.close();
+    };
+  }, []);
+
+  return { pipWindow, isSupported: isDocumentPipSupported(), open, close, error };
+}

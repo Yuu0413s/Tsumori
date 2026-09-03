@@ -1,0 +1,221 @@
+import { afterEach, describe, expect, mock, test } from "bun:test";
+import { StrictMode } from "react";
+import { act, renderHook } from "@testing-library/react";
+import { useDocumentPictureInPicture } from "./use-document-picture-in-picture.js";
+
+function createFakePipWindow() {
+  const doc = document.implementation.createHTMLDocument();
+  const target = new EventTarget();
+  const win = {
+    document: doc,
+    close: mock(() => target.dispatchEvent(new Event("pagehide"))),
+    addEventListener: target.addEventListener.bind(target),
+    removeEventListener: target.removeEventListener.bind(target),
+    dispatchEvent: target.dispatchEvent.bind(target),
+  };
+  return win as unknown as Window;
+}
+
+describe("useDocumentPictureInPicture", () => {
+  afterEach(() => {
+    delete (window as { documentPictureInPicture?: unknown }).documentPictureInPicture;
+  });
+
+  test("documentPictureInPicture 非対応環境では isSupported が false", () => {
+    delete (window as { documentPictureInPicture?: unknown }).documentPictureInPicture;
+
+    const { result } = renderHook(() => useDocumentPictureInPicture({ width: 240, height: 160 }));
+
+    expect(result.current.isSupported).toBe(false);
+    expect(result.current.pipWindow).toBeNull();
+  });
+
+  test("open() は指定サイズで PiP ウィンドウを要求し、既存スタイルシートをコピーする", async () => {
+    const fakeWindow = createFakePipWindow();
+    const requestWindow = mock(async () => fakeWindow);
+    (
+      window as unknown as { documentPictureInPicture: { requestWindow: typeof requestWindow } }
+    ).documentPictureInPicture = { requestWindow };
+
+    const style = document.createElement("style");
+    style.textContent = "body { color: red; }";
+    document.head.appendChild(style);
+
+    try {
+      const { result } = renderHook(() => useDocumentPictureInPicture({ width: 240, height: 160 }));
+      expect(result.current.isSupported).toBe(true);
+
+      await act(async () => {
+        await result.current.open();
+      });
+
+      expect(requestWindow).toHaveBeenCalledWith({ width: 240, height: 160 });
+      expect(result.current.pipWindow).toBe(fakeWindow);
+      expect(fakeWindow.document.head.querySelector("style")?.textContent).toContain(
+        "body { color: red; }",
+      );
+    } finally {
+      style.remove();
+    }
+  });
+
+  test("PiP ウィンドウが閉じられる（pagehide）と pipWindow が null に戻る", async () => {
+    const fakeWindow = createFakePipWindow();
+    const requestWindow = mock(async () => fakeWindow);
+    (
+      window as unknown as { documentPictureInPicture: { requestWindow: typeof requestWindow } }
+    ).documentPictureInPicture = { requestWindow };
+
+    const { result } = renderHook(() => useDocumentPictureInPicture({ width: 240, height: 160 }));
+    await act(async () => {
+      await result.current.open();
+    });
+    expect(result.current.pipWindow).not.toBeNull();
+
+    act(() => {
+      fakeWindow.dispatchEvent(new Event("pagehide"));
+    });
+
+    expect(result.current.pipWindow).toBeNull();
+  });
+
+  test("close() は開いている PiP ウィンドウの close() を呼ぶ", async () => {
+    const fakeWindow = createFakePipWindow();
+    const requestWindow = mock(async () => fakeWindow);
+    (
+      window as unknown as { documentPictureInPicture: { requestWindow: typeof requestWindow } }
+    ).documentPictureInPicture = { requestWindow };
+
+    const { result } = renderHook(() => useDocumentPictureInPicture({ width: 240, height: 160 }));
+    await act(async () => {
+      await result.current.open();
+    });
+
+    act(() => {
+      result.current.close();
+    });
+
+    expect(fakeWindow.close).toHaveBeenCalled();
+  });
+
+  test("requestWindow が失敗したら error を設定し、pipWindow は null のまま", async () => {
+    const requestWindow = mock(async () => {
+      throw new Error("NotAllowedError");
+    });
+    (
+      window as unknown as { documentPictureInPicture: { requestWindow: typeof requestWindow } }
+    ).documentPictureInPicture = { requestWindow };
+
+    const { result } = renderHook(() => useDocumentPictureInPicture({ width: 240, height: 160 }));
+
+    await act(async () => {
+      await result.current.open();
+    });
+
+    expect(result.current.pipWindow).toBeNull();
+    expect(result.current.error).not.toBeNull();
+  });
+
+  test("open() 実行中の連打では requestWindow を1回しか呼ばない", async () => {
+    const fakeWindow = createFakePipWindow();
+    let resolveRequestWindow: (win: Window) => void = () => {};
+    const requestWindow = mock(
+      () =>
+        new Promise<Window>((resolve) => {
+          resolveRequestWindow = resolve;
+        }),
+    );
+    (
+      window as unknown as { documentPictureInPicture: { requestWindow: typeof requestWindow } }
+    ).documentPictureInPicture = { requestWindow };
+
+    const { result } = renderHook(() => useDocumentPictureInPicture({ width: 240, height: 160 }));
+
+    let firstOpen!: Promise<void>;
+    let secondOpen!: Promise<void>;
+    act(() => {
+      firstOpen = result.current.open();
+      secondOpen = result.current.open();
+    });
+
+    resolveRequestWindow(fakeWindow);
+    await act(async () => {
+      await Promise.all([firstOpen, secondOpen]);
+    });
+
+    expect(requestWindow).toHaveBeenCalledTimes(1);
+  });
+
+  test("open() の解決待ち中にアンマウントされたら、解決後に届いた PiP ウィンドウを即座に閉じる", async () => {
+    const fakeWindow = createFakePipWindow();
+    let resolveRequestWindow: (win: Window) => void = () => {};
+    const requestWindow = mock(
+      () =>
+        new Promise<Window>((resolve) => {
+          resolveRequestWindow = resolve;
+        }),
+    );
+    (
+      window as unknown as { documentPictureInPicture: { requestWindow: typeof requestWindow } }
+    ).documentPictureInPicture = { requestWindow };
+
+    const { result, unmount } = renderHook(() =>
+      useDocumentPictureInPicture({ width: 240, height: 160 }),
+    );
+
+    let openPromise!: Promise<void>;
+    act(() => {
+      openPromise = result.current.open();
+    });
+
+    unmount();
+    resolveRequestWindow(fakeWindow);
+    await act(async () => {
+      await openPromise;
+    });
+
+    expect(fakeWindow.close).toHaveBeenCalled();
+  });
+
+  test("StrictMode下（開発時のEffect二重実行）でも、開いたPiPウィンドウが即座に閉じない", async () => {
+    // 本番アプリは main.tsx で StrictMode を使っており、開発時は
+    // setup → cleanup → setup と Effect が1回多く実行される。cleanup で
+    // 立てた disposedRef を setup 側で戻し忘れると、2回目以降の open() が
+    // 常に「アンマウント済み」扱いになり、開いた瞬間に PiP が閉じてしまう。
+    const fakeWindow = createFakePipWindow();
+    const requestWindow = mock(async () => fakeWindow);
+    (
+      window as unknown as { documentPictureInPicture: { requestWindow: typeof requestWindow } }
+    ).documentPictureInPicture = { requestWindow };
+
+    const { result } = renderHook(() => useDocumentPictureInPicture({ width: 240, height: 160 }), {
+      wrapper: StrictMode,
+    });
+
+    await act(async () => {
+      await result.current.open();
+    });
+
+    expect(result.current.pipWindow).toBe(fakeWindow);
+    expect(fakeWindow.close).not.toHaveBeenCalled();
+  });
+
+  test("アンマウント時に開いている PiP ウィンドウを閉じる", async () => {
+    const fakeWindow = createFakePipWindow();
+    const requestWindow = mock(async () => fakeWindow);
+    (
+      window as unknown as { documentPictureInPicture: { requestWindow: typeof requestWindow } }
+    ).documentPictureInPicture = { requestWindow };
+
+    const { result, unmount } = renderHook(() =>
+      useDocumentPictureInPicture({ width: 240, height: 160 }),
+    );
+    await act(async () => {
+      await result.current.open();
+    });
+
+    unmount();
+
+    expect(fakeWindow.close).toHaveBeenCalled();
+  });
+});

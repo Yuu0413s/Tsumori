@@ -26,9 +26,12 @@ export function DeviationModal({ onSubmit, onCancel }: DeviationModalProps) {
       role="dialog"
       aria-modal="true"
       aria-labelledby="deviation-modal-heading"
-      className="fixed inset-0 flex items-center justify-center bg-black/40 px-4"
+      className="fixed inset-0 flex items-center justify-center bg-black/40 px-4 py-4"
     >
-      <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-lg">
+      {/* PiPウィンドウ（240×160）のような極小ビューポートでもモーダル本体だけを
+          スクロールして操作できるようにする（外側にもoverflow-y-autoを付けると
+          スクロール領域が二重になり紛らわしいため内側だけに統一）。 */}
+      <div className="max-h-full w-full max-w-sm overflow-y-auto rounded-lg bg-white p-6 shadow-lg">
         <h2 id="deviation-modal-heading" className="text-lg font-bold text-gray-900">
           予定時間と差がありました
         </h2>
